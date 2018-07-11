@@ -15,16 +15,24 @@ GDAC_LATEST = '2016_07_15'
 
 gdac_params = {
     'mutation': {
-        'data_type': 'Mutation_Packager_Oncotated',
-        'run_type': 'stddata'
+        'data_type': 'Mutation_Packager_Oncotated_Calls.Level_3',
+        'run_type': 'stddata',
+        'suffix': 'maf.txt'
     },
     'expression': {
-        'data_type': 'RSEM_genes_normalized',
-        'run_type': 'stddata'
+        'data_type': 'Merge_rnaseqv2__illuminahiseq_rnaseqv2__unc_edu__Level_3__RSEM_genes_normalized__data.Level_3',
+        'run_type': 'stddata',
+        'suffix': 'rsem_normalized.csv'
     },
-    'copy_number': {
-        'data_type': 'Gistic2',
-        'run_type': 'analyses'
+    'copy number': {
+        'data_type': 'CopyNumber_Gistic2.Level_4',
+        'run_type': 'analyses',
+        'suffix': 'copy_number.csv'
+    },
+    'clinical': {
+        'data_type': 'Clinical_Pick_Tier1.Level_4',
+        'run_type': 'stddata',
+        'suffix': 'clin.merged.picked.txt'
     }
 }
 
@@ -36,12 +44,25 @@ def download_gdac(data_type, cohort, date=GDAC_LATEST):
         check_output(f'''
             firehose_get -o {params['data_type']} \
                 {params['run_type']} {date} {cohort}
-            tar -xvf {folder}/*{params['data_type']}*.tar.gz -C {folder}/
+            tar -xvf {folder}/gdac.broadinstitute.org_{cohort}.{params['data_type']}*.tar.gz -C {folder}/
+            cp {folder}/*{cohort}.{params['data_type']}*/*{params['clinical']['filename']}
         ''', shell=True)
 
 
-def gdac_to_table(f, ncols=2):
-    pass
+def extract_gdac(data_type):
+    if data_type == 'mutation':
+        check_output(f'''
+            for cohort in `ls stddata__2016_07_15`
+            do
+                folder=stddata__2016_07_15/$cohort/20160715/gdac.broadinstitute.org_$cohort.Mutation_Packager_Calls.Level_3.2016071500.0.0
+                first_file=`ls $folder/TCGA* | head -1`
+                head -1 $first_file \
+                    > tables/$cohort.maf.txt
+                cat $folder/TCGA*.maf.txt \
+                    | grep -v Hugo_Symbol \
+                    >> tables/$cohort.maf.txt
+            done
+        ''')
 
 
 def load_tcga_sample_meta(fpath=TCGA_SAMPLE_META):
@@ -49,10 +70,12 @@ def load_tcga_sample_meta(fpath=TCGA_SAMPLE_META):
     meta = meta[['cohort', 'patient', 'sample', 'sample_code', 'sample_type']]
     meta.columns = ['cohort_id', 'patient_id', 'sample_id', 'sample_code',
                     'sample_type']
+    meta['source_id'] = 'TCGA'
 
     conn = db.engine.connect()
+    conn.execute("INSERT INTO source (source_id) VALUES ('TCGA')")
     (meta
-        [['cohort_id']]
+        [['cohort_id', 'source_id']]
         .drop_duplicates()
         .to_sql('cohort', conn, if_exists='replace', index=False))
     (meta
@@ -79,6 +102,7 @@ def load_immune_value(col, fpath=IMMUNE_LANDSCAPE):
 
     conn = db.engine.connect()
     (reordered
+        .drop_duplicates(subset=['patient_id', 'data_type'])
         .dropna(subset=['value'])
         .to_sql(table, conn, if_exists='append', index=False))
     conn.close()
@@ -95,3 +119,59 @@ def load_tcga_profile(data_type, fpath):
             raise ValueError('Data type not recognized')
 
         db.load_sample_gene_values(fpath, data_type, cols, unit)
+
+
+def is_numeric(val):
+    try:
+        float(val)
+        return True
+    except ValueError:
+        return False
+
+
+def load_tcga_clinical(fpath):
+    mat = pd.read_csv(fpath, sep='\t')
+    df = mat.melt(id_vars='Hybridization REF', var_name='patient_id',
+                  value_name='value')
+    df = df[df['Hybridization REF'] != 'Composite Element REF']
+    df['patient_id'] = df['patient_id'].str.upper()
+    df['unit'] = 'clinical'
+    df = df.rename(columns={'Hybridization REF': 'data_type'})
+    df = df.drop_duplicates(subset=['patient_id', 'data_type'])
+    df = df.dropna(subset=['value'])
+
+    df['is_numeric'] = df['value'].map(is_numeric)
+    df_numeric = df[df['is_numeric']]
+    df_text = df[~df['is_numeric']]
+
+    conn = db.engine.connect()
+
+    (df_numeric[['patient_id', 'data_type', 'unit', 'value']]
+        .to_sql('patient_value', conn, if_exists='append', index=False))
+    (df_text[['patient_id', 'data_type', 'unit', 'value']]
+        .to_sql('patient_text_value', conn, if_exists='append', index=False))
+    conn.close()
+
+
+def load_tcga_mutation(fpath):
+    maf = pd.read_csv(fpath, sep='\t')
+    df = maf[['Entrez_Gene_Id', 'Tumor_Sample_Barcode',
+              'Variant_Classification', 'Variant_Type', 'AAChange']]
+    df['sample_id'] = df['Tumor_Sample_Barcode'].map(lambda s: s[:15])
+    df = df.drop('Tumor_Sample_Barcode', axis=1)
+    df = df.rename(columns={
+        'Entrez_Gene_Id': 'gene_id',
+        'Variant_Type': 'variant type',
+        'Variant_Classification': 'variant classification',
+        'AAChange': 'AA change'})
+    df = df.melt(id_vars=['sample_id', 'gene_id'],
+                 var_name='data_type', value_name='value')
+    df['unit'] = 'mutation'
+    df = df.drop_duplicates(subset=['gene_id', 'sample_id', 'data_type'])
+    df = df.dropna(subset=['value'])
+
+    conn = db.engine.connect()
+
+    (df[['sample_id', 'gene_id', 'data_type', 'unit', 'value']]
+        .to_sql('sample_gene_text_value', conn, if_exists='append', index=False))
+    conn.close()

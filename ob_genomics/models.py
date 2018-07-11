@@ -29,6 +29,8 @@ class Source(base):
 class Cohort(base):
     __tablename__ = 'cohort'
     cohort_id = Column(String, primary_key=True)
+    source_id = Column(String, ForeignKey('source.source_id'), 
+                       primary_key=True)
 
 
 class Patient(base):
@@ -58,13 +60,24 @@ class CellType(base):
     __tablename__ = 'cell_type'
     cell_type_id = Column(String, primary_key=True)
     tissue_id = Column(String, ForeignKey('tissue.tissue_id'))
+    cell_type = Column(String, nullable=False)
 
+
+class Pathway(base):
+    __tablename__ = 'pathway'
+    pathway_id = Column(String, primary_key=True)
+
+
+##############################
+# Generalizable data entities
+# (similar to Entity-Attribute-Value with foreign keys)
 
 class PatientValue(base):
     __tablename__ = 'patient_value'
     patient_id = Column(String, ForeignKey('patient.patient_id'),
                         primary_key=True)
-    data_type = Column(String, nullable=False)
+    data_type = Column(String, primary_key=True)
+    unit = Column(String)
     value = Column(Numeric, nullable=False)
 
 
@@ -72,7 +85,8 @@ class PatientTextValue(base):
     __tablename__ = 'patient_text_value'
     patient_id = Column(String, ForeignKey('patient.patient_id'),
                         primary_key=True)
-    data_type = Column(String, nullable=False)
+    data_type = Column(String, primary_key=True)
+    unit = Column(String)
     value = Column(String, nullable=False)
 
 
@@ -86,11 +100,35 @@ class SampleGeneValue(base):
     value = Column(Numeric, nullable=False)
 
 
+class SampleGeneTextValue(base):
+    __tablename__ = 'sample_gene_text_value'
+    sample_id = Column(String, ForeignKey('sample.sample_id'),
+                       primary_key=True)
+    gene_id = Column(String, ForeignKey('gene.gene_id'), primary_key=True)
+    data_type = Column(String, primary_key=True)
+    unit = Column(String)
+    value = Column(String, nullable=False)
+
+
 class TissueGeneValue(base):
     __tablename__ = 'tissue_gene_value'
+    source_id = Column(String, ForeignKey('source.source_id'),
+                       primary_key=True)
     tissue_id = Column(String, ForeignKey('tissue.tissue_id'),
                        primary_key=True)
     gene_id = Column(String, ForeignKey('gene.gene_id'), primary_key=True)
     data_type = Column(String, primary_key=True)
     unit = Column(String)
     value = Column(Numeric, nullable=False)
+
+
+class CellTypeGeneTextValue(base):
+    __tablename__ = 'cell_type_gene_text_value'
+    source_id = Column(String, ForeignKey('source.source_id'),
+                       primary_key=True)
+    cell_type_id = Column(String, ForeignKey('cell_type.cell_type_id'),
+                          primary_key=True)
+    gene_id = Column(String, ForeignKey('gene.gene_id'), primary_key=True)
+    data_type = Column(String, primary_key=True)
+    unit = Column(String)
+    value = Column(String, nullable=False)

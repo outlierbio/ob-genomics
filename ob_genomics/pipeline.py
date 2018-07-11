@@ -7,6 +7,7 @@ import pandas as pd
 from ob_genomics.config import cfg
 import ob_genomics.database as db
 import ob_genomics.gtex as gtex
+import ob_genomics.hpa as hpa
 import ob_genomics.tcga as tcga
 
 REFERENCE = cfg['REFERENCE']
@@ -69,13 +70,28 @@ class BuildGDACTable(luigi.Task):
             tcga.gdac_to_table(f)
 
     def output(self):
-        dt_string = {
-            'expression': 'rsem_normalized',
-            'copy number': 'copy_number'
-        }[self.data_type]
-        path = f'{REFERENCE}/tcga/gdac/tables/{self.cohort}.{dt_string}.csv'
+        suffix = tcga.gdac_params[self.data_type]['suffix']
+        path = f'{REFERENCE}/tcga/gdac/tables/{self.cohort}.{suffix}'
         return luigi.LocalTarget(path)
         # return S3Target(s3_path)
+
+
+class LoadTCGAClinical(luigi.Task):
+
+    cohort = luigi.Parameter()
+
+    def requires(self):
+        return (LoadTCGASampleMeta(),
+                BuildGDACTable(data_type='clinical', cohort=self.cohort))
+
+    def run(self):
+        _, table = self.input()
+        tcga.load_tcga_clinical(table.path)
+        self.output().touch()
+
+    def output(self):
+        update_id = f'TCGA {self.cohort} clinical'
+        return DatabaseTarget('patient_value,patient_text_value', update_id)
 
 
 class LoadTCGASampleMeta(luigi.Task):
@@ -93,7 +109,29 @@ class LoadImmuneLandscape(luigi.Task):
         return LoadTCGASampleMeta()
 
     def run(self):
-        db.load_immune_value('Immune Subtype')
+        tcga.load_immune_value('Immune Subtype')
+        self.output().touch()
+
+    def output(self):
+        return DatabaseTarget('patient_value', 'immune subtype')
+
+
+class LoadTCGAMutation(luigi.Task):
+
+    cohort = luigi.Parameter()
+
+    def requires(self):
+        return (LoadTCGASampleMeta(),
+                BuildGDACTable(data_type='mutation', cohort=self.cohort))
+
+    def run(self):
+        _, table = self.input()
+        tcga.load_tcga_mutation(table.path)
+        self.output().touch()
+
+    def output(self):
+        update_id = f'TCGA {self.cohort} mutation'
+        return DatabaseTarget('sample_gene_value', update_id)
 
 
 class LoadTCGAProfile(luigi.Task):
@@ -111,21 +149,27 @@ class LoadTCGAProfile(luigi.Task):
         self.output().touch()
 
     def output(self):
-        update_id = f'{self.cohort} {self.data_type}'
+        update_id = f'TCGA {self.cohort} {self.data_type}'
         return DatabaseTarget('sample_gene_value', update_id)
 
 
 class LoadTCGA(luigi.Task):
     def requires(self):
-        cohorts = pd.read_csv(tcga.TCGA_COHORT_META)['cohort_id']
+        if cfg['ENV'] == 'test':
+            cohorts = ['ACC', 'CHOL', 'DLBC']
+        else:
+            cohorts = pd.read_csv(tcga.TCGA_COHORT_META)['cohort_id']
+
         for cohort in cohorts:
             if cohort in ['LCML', 'FPPP', 'CNTL', 'MISC']:
                 continue
+            yield LoadTCGAClinical(cohort=cohort)
+            yield LoadTCGAMutation(cohort=cohort)
             yield LoadTCGAProfile(data_type='copy number', cohort=cohort)
             yield LoadTCGAProfile(data_type='expression', cohort=cohort)
 
 
-class LoadGTExMedian(luigi.Task):
+class LoadGTEx(luigi.Task):
     def run(self):
         gtex.load_gtex_median_tpm()
         self.output().touch()
@@ -134,8 +178,30 @@ class LoadGTExMedian(luigi.Task):
         return DatabaseTarget('tissue_gene_value', 'GTEx median')
 
 
+class LoadHPAProtein(luigi.Task):
+    def run(self):
+        hpa.load_hpa_protein()
+        self.output().touch()
+
+    def output(self):
+        return DatabaseTarget('cell_type_gene_text_value', 'HPA proteomics')
+
+
+class LoadHPAExpression(luigi.Task):
+    def run(self):
+        hpa.load_hpa_expression()
+        self.output().touch()
+
+    def output(self):
+        return DatabaseTarget('tissue_gene_value', 'HPA expression')
+
+
 def build():
     luigi.build([
+        LoadTCGASampleMeta(),
         LoadTCGA(),
-        LoadGTExMedian()
+        LoadImmuneLandscape(),
+        LoadGTEx(),
+        LoadHPAProtein(),
+        LoadHPAExpression()
     ], local_scheduler=True)
