@@ -24,12 +24,14 @@ def load_gtex_median_tpm(fpath=GTEX_MEDIAN_TPM):
     df['ensembl_id'] = df['gene_id'].map(lambda s: s.split('.')[0])
 
     conn = db.engine.connect()
+    conn.execute("INSERT INTO source (source_id) VALUES ('GTEx')")
+
     (df[['ensembl_id', 'tissue', 'median_tpm']]
         .to_sql('tmp_gtex', conn, if_exists='replace', index=False))
     conn.execute('''
         INSERT INTO tissue_gene_value
-        (tissue_id, gene_id, data_type, unit, value)
-        SELECT t.tissue_id, g.gene_id, 'expression',
+        (source_id, tissue_id, gene_id, data_type, unit, value)
+        SELECT 'GTEx', t.tissue_id, g.gene_id, 'expression',
                'median_tpm', tmp.median_tpm
         FROM tmp_gtex tmp
         INNER JOIN tissue t ON t.gtex_id = tmp.tissue

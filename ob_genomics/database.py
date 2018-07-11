@@ -11,6 +11,7 @@ DATABASE_URI = cfg['DATABASE_URI']
 REFERENCE = cfg['REFERENCE']
 GENE_INFO = op.join(REFERENCE, 'ncbi', 'Homo_sapiens.gene_info')
 TISSUE = op.join(REFERENCE, 'tissue', 'tissue.csv')
+CELL_TYPE = op.join(REFERENCE, 'tissue', 'cell_type.csv')
 TEST_GENES = [3845, 7157, 4609, 2597]
 
 engine = create_engine(DATABASE_URI)
@@ -57,6 +58,19 @@ def load_tissues(fpath=TISSUE):
 
     conn = engine.connect()
     tissue.to_sql('tissue', conn, if_exists='append', index=False)
+    conn.close()
+
+
+def load_cell_types(fpath=CELL_TYPE):
+    cell_type = (
+        pd.read_csv(fpath)
+        [['cell_type_id', 'tissue_id', 'cell_type']]
+        .drop_duplicates(subset='cell_type_id')
+    )
+
+    conn = engine.connect()
+    cell_type.to_sql('cell_type', conn, if_exists='append', index=False)
+    conn.close()
 
 
 def load_sample_gene_values(fpath, data_type, cols, unit, env=cfg['ENV']):
