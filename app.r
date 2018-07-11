@@ -7,22 +7,27 @@ source('database.r')
 source('plots.r')
 genes <- c('GAPDH', 'TP53', 'KRAS', 'MYC')
 
-
 ui <- fluidPage(
 	titlePanel(title = 'Celsius public genomics app', windowTitle = 'Genomics app'),
 	tabsetPanel(type='tabs',
 
 	  tabPanel('Gene',
        sidebarPanel(
-         selectizeInput(inputId = 'gene', label = 'Select a gene',
-                        choices = genes, selected = 'GAPDH',
+         selectizeInput(inputId = 'gene', label = 'Select gene(s)',
+                        choices = genes, selected = c('GAPDH', 'MYC', 'TP53'),
                         multiple = TRUE)
        ),
        mainPanel(
-         h1('TCGA expression by cohort'),
+         h2('TCGA expression by cohort'),
          plotOutput('tcga_expr', height = 400),
-         h1('GTEx expression by tissue'),
-         plotOutput('gtex_expr', height=400)
+         h2('TCGA mutations by cohort'),
+         plotOutput('tcga_mut', height = 400),
+         h2('TCGA expression by immune subtype'),
+         plotOutput('expr_immune_subtype', height=400),
+         h2('GTEx expression by tissue'),
+         plotOutput('gtex_expr', height=400),
+         h2('HPA expression by cell type'),
+         plotOutput('hpa_prot', height=400)
        )
     )
 # 
@@ -62,28 +67,55 @@ server <- function(input, output, session) {
 
   gtex_expr <- reactive({
     tissue_expression %>%
-      filter(symbol %in% input$gene, unit == 'median_tpm') %>%
+      filter(symbol %in% input$gene) %>%
       collect %>%
       spread(unit, value)
   })
   
+  hpa_prot <- reactive({
+    cell_type_protein %>%
+      filter(symbol %in% input$gene) %>%
+      collect %>%
+      spread(unit, value) %>%
+      mutate(
+        `detection level` = factor(`detection level`,
+                                   levels=c('Not detected', 'Low', 'Medium', 'High')))
+  })
+  
+  tcga_mut <- reactive({
+    sample_mutation %>%
+      filter(symbol %in% input$gene) %>%
+      collect %>%
+      spread(data_type, value)
+  })
+  
 	output$tcga_expr <- renderPlot({
 	  p <- tcga_expr() %>%
-      plot_tcga_by_cohort()  # ggplot (flat)
+      plot_tcga_by_cohort  # ggplot (flat)
 	  p
 	  # ggplotly(p, tooltip='text') %>%  # Convert to plotly with labeled tooltip
 	  #   layout(margin = list(b=100))  # Adjust plot margins
 	})
 	
 	output$gtex_expr <- renderPlot({
-	  p <- gtex_expr() %>%
-	    plot_gtex_by_tissue()  # ggplot (flat)
-	  p
-	  # ggplotly(p, tooltip='text') %>%  # Convert to plotly with labeled tooltip
-	  #   layout(margin = list(b=100))  # Adjust plot margins
+	  gtex_expr() %>% plot_gtex_by_tissue
 	})
 
-	# output$table1 <- renderDataTable(top_hits())
+	output$hpa_prot <- renderPlot({
+	  hpa_prot() %>% plot_hpa_by_cell_type
+	})
+	
+	output$expr_immune_subtype <- renderPlot({
+	  tcga_expr() %>%
+	    inner_join(patient_immune_subtype %>% collect) %>%
+	    plot_expr_by_immune_subtype
+	})
+	
+	output$tcga_mut <- renderPlot({
+	  tcga_mut() %>% plot_tcga_mutations
+	})
+	
+	output$mutation_table <- renderDataTable(mutations())
 	
 	# output$generated_list_input <- renderUI({
 	#   selectizeInput(inputId = 'in4', label = 'Select from dynamically generated list',
