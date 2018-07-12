@@ -230,6 +230,8 @@ def build():
         LoadTCGASampleMeta(),
         LoadTCGA(),
         LoadImmuneLandscape(),
+        LoadTCIAPatient(),
+        LoadTCIAPathways(),
         LoadGTEx(),
         LoadHPAProtein(),
         LoadHPAExpression()
