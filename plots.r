@@ -60,3 +60,32 @@ plot_hpa_by_cell_type <- function(df) {
       y = 'Detection level'
     )
 }
+
+plot_gtex_vs_hpa <- function(df) {
+  ggplot(df, aes(x=log2(GTEx + 1), y=log2(HPA + 1), color=tissue)) + 
+    facet_wrap(~symbol, scales='free') +
+    geom_point(aes(text=paste0(tissue, ' - ', subtype))) +
+    theme_bw() +
+    theme(
+      axis.text.x = element_text(angle=90, hjust=1, vjust=1),
+      legend.position = 'none') +
+    labs(
+      x = 'GTEx expression (median TPM)',
+      y = 'HPA expression (TPM)'
+    )
+}
+
+
+plot_hpa_prot_vs_expr <- function(df) {
+  ggplot(df, aes(x=`detection level`, y=log2(TPM + 1), color=tissue)) + 
+    facet_wrap(~symbol, scales='free') +
+    geom_point(aes(text=paste0(tissue, ' - ', subtype))) +
+    theme_bw() +
+    theme(
+      axis.text.x = element_text(angle=90, hjust=1, vjust=1),
+      legend.position = 'none') +
+    labs(
+      x = 'HPA protein level',
+      y = 'HPA expression (TPM)'
+    )
+}

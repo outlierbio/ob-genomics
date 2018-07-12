@@ -27,7 +27,11 @@ ui <- fluidPage(
          h2('GTEx expression by tissue'),
          plotOutput('gtex_expr', height=400),
          h2('HPA expression by cell type'),
-         plotOutput('hpa_prot', height=400)
+         plotOutput('hpa_prot', height=400),
+         h2('GTEx vs HPA mRNA expression'),
+         plotlyOutput('gtex_vs_hpa', height=400),
+         h2('HPA protein vs mRNA expression'),
+         plotlyOutput('hpa_prot_vs_expr', height=400)
        )
     )
 # 
@@ -101,6 +105,25 @@ server <- function(input, output, session) {
 	  gtex_expr() %>% plot_gtex_by_tissue
 	})
 
+	output$gtex_vs_hpa <- renderPlotly({
+	  hpa <- hpa_expr() %>% 
+	    select(tissue, subtype, symbol, HPA = TPM)
+	  p <- gtex_expr() %>%
+	    select(tissue, subtype, symbol, GTEx = median_tpm) %>%
+	    inner_join(hpa) %>%
+	    plot_gtex_vs_hpa
+	  ggplotly(p)
+	})
+	
+	output$hpa_prot_vs_expr <- renderPlotly({
+	  prot <- hpa_prot() %>%
+	    select(tissue, subtype, symbol, cell_type_id, `detection level`)
+	  p <- hpa_expr() %>%
+	    select(tissue, subtype, symbol, TPM) %>%
+	    inner_join(prot) %>%
+      plot_hpa_prot_vs_expr
+	})
+	
 	output$hpa_prot <- renderPlot({
 	  hpa_prot() %>% plot_hpa_by_cell_type
 	})
