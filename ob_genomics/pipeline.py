@@ -119,6 +119,32 @@ class LoadImmuneLandscape(Task):
         return DatabaseTarget('patient_value', 'immune landscape')
 
 
+class LoadTCIAPatient(Task):
+
+    def requires(self):
+        return LoadTCGASampleMeta()
+
+    def run(self):
+        tcga.load_tcia_patient()
+        self.output().touch()
+
+    def output(self):
+        return DatabaseTarget('patient_value', 'TCIA patient')
+
+
+class LoadTCIAPathways(Task):
+
+    def requires(self):
+        return LoadTCGASampleMeta()
+
+    def run(self):
+        tcga.load_tcia_pathways()
+        self.output().touch()
+
+    def output(self):
+        return DatabaseTarget('patient_value', 'TCIA pathways')
+
+
 class LoadTCGAMutation(Task):
 
     cohort = Parameter()

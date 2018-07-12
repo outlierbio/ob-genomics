@@ -8,6 +8,9 @@ import ob_genomics.database as db
 
 REFERENCE = cfg['REFERENCE']
 IMMUNE_LANDSCAPE = op.join(REFERENCE, 'tcga', 'immune_landscape.csv')
+TCIA_PATIENT = op.join(REFERENCE, 'tcga', 'tcia', 'patientsAll.tsv')
+TCIA_GSEA_DEPLETION = op.join(REFERENCE, 'tcga', 'tcia', 'TCIA_GSEA_depletion.tsv')
+TCIA_GSEA_ENRICHMENT = op.join(REFERENCE, 'tcga', 'tcia', 'TCIA_GSEA_enrichment.tsv')
 TCGA_SAMPLE_META = op.join(REFERENCE, 'tcga', 'sample_meta.csv')
 TCGA_COHORT_META = op.join(REFERENCE, 'tcga', 'cohort.csv')
 TCGA_SAMPLE_CODE = op.join(REFERENCE, 'tcga', 'sample_code.csv')
@@ -130,6 +133,57 @@ def load_immune_landscape(fpath=IMMUNE_LANDSCAPE):
         .dropna(subset=['value'])
         .to_sql('patient_text_value', conn, if_exists='append', index=False))
     conn.close()
+
+
+def load_tcia_patient(fpath=TCIA_PATIENT):
+    df = (
+        pd.read_csv(fpath, sep='\t', low_memory=False)
+        .drop(['datasource', 'disease'], axis=1)
+        .melt(id_vars='barcode', var_name='data_type', value_name='value')
+        .rename(columns={'barcode': 'patient_id'}))
+    df['data_type'] = df['data_type'].str.replace('clinical_data_', '')
+    df['unit'] = 'clinical'
+
+    # Split into numeric values and text values
+    df['is_numeric'] = df['value'].map(is_numeric)
+    df_numeric = df[df['is_numeric']]
+    df_numeric['value'] = df_numeric['value'].map(float)
+    df_text = df[~df['is_numeric']]
+
+    # Load to database in respective tables
+    conn = db.engine.connect()
+    (df_numeric[['patient_id', 'data_type', 'unit', 'value']]
+        .drop_duplicates(subset=['patient_id', 'data_type'])
+        .dropna(subset=['value'])
+        .to_sql('patient_value', conn, if_exists='append', index=False))
+    (df_text[['patient_id', 'data_type', 'unit', 'value']]
+        .drop_duplicates(subset=['patient_id', 'data_type'])
+        .dropna(subset=['value'])
+        .to_sql('patient_text_value', conn, if_exists='append', index=False))
+    conn.close()
+
+
+def load_tcia_pathways(up_fpath=TCIA_GSEA_ENRICHMENT, down_fpath=TCIA_GSEA_DEPLETION):
+    for fpath in up_fpath, down_fpath:
+        df = (
+            pd.read_csv(fpath, sep='\t')
+            .drop(['disease'], axis=1)
+            .rename(columns={
+                'patients': 'patient_id',
+                'cellType': 'data_type',
+                'qValue < 1%Enriched': 'qvalue',
+                'qValue < 1%Depleted': 'qvalue',
+                'NES > 0': 'value'}))
+        df = df[df['qvalue'] < 0.05]
+        df['unit'] = 'normalized enrichment score'
+
+        # Load to database in respective tables
+        conn = db.engine.connect()
+        (df[['patient_id', 'data_type', 'unit', 'value']]
+            .drop_duplicates(subset=['patient_id', 'data_type'])
+            .dropna(subset=['value'])
+            .to_sql('patient_value', conn, if_exists='append', index=False))
+        conn.close()
 
 
 def load_tcga_profile(data_type, fpath):
