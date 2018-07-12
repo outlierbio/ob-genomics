@@ -1,6 +1,7 @@
 import os.path as op
 
 import luigi
+from luigi import Task, Parameter, Target, LocalTarget
 from luigi.contrib.s3 import S3Target
 import pandas as pd
 
@@ -11,9 +12,12 @@ import ob_genomics.hpa as hpa
 import ob_genomics.tcga as tcga
 
 REFERENCE = cfg['REFERENCE']
+SCRATCH = cfg['SCRATCH']
+
+ReferenceTarget = S3Target if REFERENCE.startswith('s3://') else LocalTarget
 
 
-class DatabaseTarget(luigi.Target):
+class DatabaseTarget(Target):
     def __init__(self, table, update_id):
         """
         Args:
@@ -44,23 +48,23 @@ class DatabaseTarget(luigi.Target):
         return row is not None
 
 
-class DownloadGDAC(luigi.Task):
+class DownloadGDAC(Task):
 
-    data_type = luigi.Parameter()
-    cohort = luigi.Parameter()
+    data_type = Parameter()
+    cohort = Parameter()
 
     def run(self):
         tcga.download_gdac(self.data_type, self.cohort)
 
     def output(self):
         fpath = f'{folder}/*{self.data_type}*./{self.cohort}'
-        return luigi.LocalTarget(fpath)
+        return ReferenceTarget(fpath)
 
 
-class BuildGDACTable(luigi.Task):
+class BuildGDACTable(Task):
 
-    data_type = luigi.Parameter()
-    cohort = luigi.Parameter()
+    data_type = Parameter()
+    cohort = Parameter()
 
     def requires(self):
         return DownloadGDAC()
@@ -72,13 +76,12 @@ class BuildGDACTable(luigi.Task):
     def output(self):
         suffix = tcga.gdac_params[self.data_type]['suffix']
         path = f'{REFERENCE}/tcga/gdac/tables/{self.cohort}.{suffix}'
-        return luigi.LocalTarget(path)
-        # return S3Target(s3_path)
+        return ReferenceTarget(path)
 
 
-class LoadTCGAClinical(luigi.Task):
+class LoadTCGAClinical(Task):
 
-    cohort = luigi.Parameter()
+    cohort = Parameter()
 
     def requires(self):
         return (LoadTCGASampleMeta(),
@@ -94,7 +97,7 @@ class LoadTCGAClinical(luigi.Task):
         return DatabaseTarget('patient_value,patient_text_value', update_id)
 
 
-class LoadTCGASampleMeta(luigi.Task):
+class LoadTCGASampleMeta(Task):
     def run(self):
         tcga.load_tcga_sample_meta()
         self.output().touch()
@@ -103,7 +106,7 @@ class LoadTCGASampleMeta(luigi.Task):
         return DatabaseTarget('cohort,patient,sample', 'TCGA sample metadata')
 
 
-class LoadImmuneLandscape(luigi.Task):
+class LoadImmuneLandscape(Task):
 
     def requires(self):
         return LoadTCGASampleMeta()
@@ -116,9 +119,9 @@ class LoadImmuneLandscape(luigi.Task):
         return DatabaseTarget('patient_value', 'immune subtype')
 
 
-class LoadTCGAMutation(luigi.Task):
+class LoadTCGAMutation(Task):
 
-    cohort = luigi.Parameter()
+    cohort = Parameter()
 
     def requires(self):
         return (LoadTCGASampleMeta(),
@@ -134,10 +137,10 @@ class LoadTCGAMutation(luigi.Task):
         return DatabaseTarget('sample_gene_value', update_id)
 
 
-class LoadTCGAProfile(luigi.Task):
+class LoadTCGAProfile(Task):
 
-    data_type = luigi.Parameter()
-    cohort = luigi.Parameter()
+    data_type = Parameter()
+    cohort = Parameter()
 
     def requires(self):
         return (LoadTCGASampleMeta(),
@@ -153,7 +156,7 @@ class LoadTCGAProfile(luigi.Task):
         return DatabaseTarget('sample_gene_value', update_id)
 
 
-class LoadTCGA(luigi.Task):
+class LoadTCGA(Task):
     def requires(self):
         if cfg['ENV'] == 'test':
             cohorts = ['ACC', 'CHOL', 'DLBC']
@@ -169,7 +172,7 @@ class LoadTCGA(luigi.Task):
             yield LoadTCGAProfile(data_type='expression', cohort=cohort)
 
 
-class LoadGTEx(luigi.Task):
+class LoadGTEx(Task):
     def run(self):
         gtex.load_gtex_median_tpm()
         self.output().touch()
@@ -178,7 +181,7 @@ class LoadGTEx(luigi.Task):
         return DatabaseTarget('tissue_gene_value', 'GTEx median')
 
 
-class LoadHPAProtein(luigi.Task):
+class LoadHPAProtein(Task):
     def run(self):
         hpa.load_hpa_protein()
         self.output().touch()
@@ -187,7 +190,7 @@ class LoadHPAProtein(luigi.Task):
         return DatabaseTarget('cell_type_gene_text_value', 'HPA proteomics')
 
 
-class LoadHPAExpression(luigi.Task):
+class LoadHPAExpression(Task):
     def run(self):
         hpa.load_hpa_expression()
         self.output().touch()
