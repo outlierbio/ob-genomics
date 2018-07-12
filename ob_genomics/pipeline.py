@@ -112,11 +112,11 @@ class LoadImmuneLandscape(Task):
         return LoadTCGASampleMeta()
 
     def run(self):
-        tcga.load_immune_value('Immune Subtype')
+        tcga.load_immune_landscape()
         self.output().touch()
 
     def output(self):
-        return DatabaseTarget('patient_value', 'immune subtype')
+        return DatabaseTarget('patient_value', 'immune landscape')
 
 
 class LoadTCGAMutation(Task):

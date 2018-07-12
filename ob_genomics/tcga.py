@@ -89,22 +89,46 @@ def load_tcga_sample_meta(fpath=TCGA_SAMPLE_META):
     conn.close()
 
 
-def load_immune_value(col, fpath=IMMUNE_LANDSCAPE):
-    df = pd.read_csv(fpath)
-    df['data_type'] = col.lower()
-    reordered = df[['TCGA Participant Barcode', 'data_type', col]]
-    reordered.columns = ['patient_id', 'data_type', 'value']
+def is_numeric(val):
+    try:
+        float(val)
+        return True
+    except ValueError:
+        return False
 
-    if reordered.dtypes[2] == object:
-        table = 'patient_text_value'
-    else:
-        table = 'patient_value'
 
+def load_immune_landscape(fpath=IMMUNE_LANDSCAPE):
+    df = (
+        pd.read_csv(fpath)
+        .drop('TCGA Study', axis=1)
+        .rename(columns={
+            'TCGA Participant Barcode': 'patient_id',
+            'Eosinophils.0': 'Eosinophils score',
+            'Neutrophils.0': 'Neutrophils score',
+            'Eosinophils.1': 'Eosinophils',
+            'Neutrophils.1': 'Neutrophils'})
+        .melt(id_vars='patient_id', var_name='data_type', value_name='value')
+    )
+
+    immune_landscape_units = {'Immune Subtype': 'subtype', 'TCGA Subtype': 'subtype', 'Leukocyte Fraction': 'fraction', 'Stromal Fraction': 'fraction', 'Intratumor Heterogeneity': 'fraction', 'TIL Regional Fraction': 'fraction', 'Proliferation': 'score', 'Wound Healing': 'score', 'Macrophage Regulation': 'score', 'Lymphocyte Infiltration Signature Score': 'score', 'IFN-gamma Response': 'score', 'TGF-beta Response': 'score', 'SNV Neoantigens': 'count', 'Indel Neoantigens': 'count', 'Silent Mutation Rate': 'rate', 'Nonsilent Mutation Rate': 'rate', 'Number of Segments': 'count', 'Fraction Altered': 'fraction', 'Aneuploidy Score': 'score', 'Homologous Recombination Defects': 'count', 'BCR Evenness': 'fraction', 'BCR Shannon': 'fraction', 'BCR Richness': 'fraction', 'TCR Shannon': 'fraction', 'TCR Richness': 'fraction', 'TCR Evenness': 'fraction', 'CTA Score': 'score', 'Th1 Cells': 'score', 'Th2 Cells': 'score', 'Th17 Cells': 'score', 'OS': 'censored', 'OS Time': 'days', 'PFI': 'censored', 'PFI Time': 'days', 'B Cells Memory': 'signature score', 'B Cells Naive': 'signature score', 'Dendritic Cells Activated': 'signature score', 'Dendritic Cells Resting': 'signature score', 'Eosinophils score': 'signature score', 'Macrophages M0': 'signature score', 'Macrophages M1': 'signature score', 'Macrophages M2': 'signature score', 'Mast Cells Activated': 'signature score', 'Mast Cells Resting': 'signature score', 'Monocytes': 'signature score', 'Neutrophils score': 'signature score', 'NK Cells Activated': 'signature score', 'NK Cells Resting': 'signature score', 'Plasma Cells': 'signature score', 'T Cells CD4 Memory Activated': 'signature score', 'T Cells CD4 Memory Resting': 'signature score', 'T Cells CD4 Naive': 'signature score', 'T Cells CD8': 'signature score', 'T Cells Follicular Helper': 'signature score', 'T Cells gamma delta': 'signature score', 'T Cells Regulatory Tregs': 'signature score', 'Lymphocytes': 'signature score', 'Neutrophils': 'signature score', 'Eosinophils': 'signature score', 'Mast Cells': 'signature score', 'Dendritic Cells': 'signature score', 'Macrophages': 'signature score'}
+    df['unit'] = df['data_type'].map(lambda dt: immune_landscape_units[dt])
+
+    # Split into numeric values and text values
+    df['is_numeric'] = df['value'].map(is_numeric)
+    df_numeric = df[df['is_numeric']]
+    df_numeric['value'] = df_numeric['value'].map(float)
+    df_text = df[~df['is_numeric']]
+
+    # Load to database in respective tables
     conn = db.engine.connect()
-    (reordered
+    (df_numeric[['patient_id', 'data_type', 'unit', 'value']]
         .drop_duplicates(subset=['patient_id', 'data_type'])
         .dropna(subset=['value'])
-        .to_sql(table, conn, if_exists='append', index=False))
+        .to_sql('patient_value', conn, if_exists='append', index=False))
+    (df_text[['patient_id', 'data_type', 'unit', 'value']]
+        .drop_duplicates(subset=['patient_id', 'data_type'])
+        .dropna(subset=['value'])
+        .to_sql('patient_text_value', conn, if_exists='append', index=False))
     conn.close()
 
 
@@ -119,14 +143,6 @@ def load_tcga_profile(data_type, fpath):
             raise ValueError('Data type not recognized')
 
         db.load_sample_gene_values(fpath, data_type, cols, unit)
-
-
-def is_numeric(val):
-    try:
-        float(val)
-        return True
-    except ValueError:
-        return False
 
 
 def load_tcga_clinical(fpath):
