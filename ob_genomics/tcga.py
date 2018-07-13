@@ -15,6 +15,7 @@ TCGA_SAMPLE_META = op.join(REFERENCE, 'tcga', 'sample_meta.csv')
 TCGA_COHORT_META = op.join(REFERENCE, 'tcga', 'cohort.csv')
 TCGA_SAMPLE_CODE = op.join(REFERENCE, 'tcga', 'sample_code.csv')
 GDAC_LATEST = '2016_07_15'
+TEST_GENES = [3845, 7157, 4609, 2597]
 
 gdac_params = {
     'mutation': {
@@ -223,7 +224,7 @@ def load_tcga_clinical(fpath):
     conn.close()
 
 
-def load_tcga_mutation(fpath):
+def load_tcga_mutation(fpath, env=cfg['ENV']):
     maf = pd.read_csv(fpath, sep='\t')
     df = maf[['Entrez_Gene_Id', 'Tumor_Sample_Barcode',
               'Variant_Classification', 'Variant_Type', 'AAChange']]
@@ -234,6 +235,10 @@ def load_tcga_mutation(fpath):
         'Variant_Type': 'variant type',
         'Variant_Classification': 'variant classification',
         'AAChange': 'AA change'})
+
+    if env == 'test':
+        df = df[df['gene_id'].isin(TEST_GENES)]
+
     df = df.melt(id_vars=['sample_id', 'gene_id'],
                  var_name='data_type', value_name='value')
     df['unit'] = 'mutation'

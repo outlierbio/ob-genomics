@@ -10,11 +10,15 @@ HPA_NORMAL_TISSUE = op.join(REFERENCE, 'hpa', 'normal_tissue.tsv')
 HPA_RNA_TISSUE = op.join(REFERENCE, 'hpa', 'rna_tissue.tsv')
 CELL_TYPES = op.join(REFERENCE, 'tissue', 'cell_type.csv')
 TISSUES = op.join(REFERENCE, 'tissue', 'tissue.csv')
+TEST_GENES = ['GAPDH', 'MYC', 'KRAS', 'TP53']
 
 
-def load_hpa_protein(fpath=HPA_NORMAL_TISSUE):
+def load_hpa_protein(fpath=HPA_NORMAL_TISSUE, env=cfg['ENV']):
     cell_types = pd.read_csv(CELL_TYPES)
     df = pd.read_csv(fpath, sep='\t')
+
+    if env == 'test':
+        df = df[df['Gene name'].isin(TEST_GENES)]
 
     formatted = (
         df[df['Reliability'] != 'Uncertain']
@@ -41,9 +45,12 @@ def load_hpa_protein(fpath=HPA_NORMAL_TISSUE):
     conn.close()
 
 
-def load_hpa_expression(fpath=HPA_RNA_TISSUE):
+def load_hpa_expression(fpath=HPA_RNA_TISSUE, env=cfg['ENV']):
     tissues = pd.read_csv(TISSUES)
     df = pd.read_csv(fpath, sep='\t')
+
+    if env == 'test':
+        df = df[df['Gene name'].isin(TEST_GENES)]
 
     formatted = (
         df

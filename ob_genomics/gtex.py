@@ -13,15 +13,19 @@ GTEX_TPM = op.join(
 GTEX_MEDIAN_TPM = op.join(
     REFERENCE, 'gtex',
     'GTEx_Analysis_2016-01-15_v7_RNASeQCv1.1.8_gene_median_tpm.gct')
+TEST_GENES = ['GAPDH', 'MYC', 'KRAS', 'TP53']
 
 
-def load_gtex_median_tpm(fpath=GTEX_MEDIAN_TPM):
+def load_gtex_median_tpm(fpath=GTEX_MEDIAN_TPM, env=cfg['ENV']):
     df = (
         pd.read_csv(fpath, sep='\t', skiprows=2)
         .melt(id_vars=['gene_id', 'Description'],
               var_name='tissue', value_name='median_tpm')
         )
     df['ensembl_id'] = df['gene_id'].map(lambda s: s.split('.')[0])
+
+    if env == 'test':
+        df = df[df['Description'].isin(TEST_GENES)]
 
     conn = db.engine.connect()
     conn.execute("INSERT INTO source (source_id) VALUES ('GTEx')")
