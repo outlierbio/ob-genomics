@@ -29,7 +29,7 @@ class Source(base):
 class Cohort(base):
     __tablename__ = 'cohort'
     cohort_id = Column(String, primary_key=True)
-    source_id = Column(String, ForeignKey('source.source_id'), 
+    source_id = Column(String, ForeignKey('source.source_id'),
                        primary_key=True)
 
 
