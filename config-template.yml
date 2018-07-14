@@ -1,0 +1,9 @@
+test:
+  REFERENCE: /path/to/local/reference
+  SCRATCH: /tmp
+  DATABASE_URI: sqlite:///ob_genomics.db
+
+prod:
+  REFERENCE: s3://bucket-name/reference
+  SCRATCH: /scratch  # e.g., a mounted folder on a container
+  DATABASE_URI: postgresql://username:passwd@host..ds.amazonaws.com:5432/ob_genomics
