@@ -10,7 +10,7 @@ plot_tcga_by_cohort <- function(df) {
     )
 }
 
-plot_expr_by_immune_subtype <- function(df) {
+plot_tcga_expr_immune_subtype <- function(df) {
   ggplot(df, aes(x=immune_subtype, y=log2(normalized_counts + 1))) + 
     facet_grid(symbol ~ .) +
     geom_boxplot(fill=NA) +
@@ -18,6 +18,28 @@ plot_expr_by_immune_subtype <- function(df) {
     theme(axis.text.x = element_text(angle=90, hjust=1, vjust=0)) +
     labs(
       x = '',
+      y = 'log2 normalized counts'
+    )
+}
+
+plot_tcga_expr_immune_composition <- function(df) {
+  ggplot(df, aes(x=fraction, y=log2(normalized_counts + 1), color=cohort_id)) + 
+    facet_grid(symbol ~ component, scales='free') +
+    geom_point() +
+    theme_bw() +
+    labs(
+      x = 'tumor fraction',
+      y = 'log2 normalized counts'
+    )
+}
+
+plot_tcga_expr_signature_score <- function(df) {
+  ggplot(df, aes(x=signature_score, y=log2(normalized_counts + 1), color=cohort_id)) + 
+    facet_grid(symbol ~ signature, scales='free') +
+    geom_point() +
+    theme_bw() +
+    labs(
+      x = 'signature score',
       y = 'log2 normalized counts'
     )
 }
@@ -87,5 +109,63 @@ plot_hpa_prot_vs_expr <- function(df) {
     labs(
       x = 'HPA protein level',
       y = 'HPA expression (TPM)'
+    )
+}
+
+plot_tcga_expr_pair <- function(df, gene_x, gene_y) {
+  ggplot(df, aes(x=get(gene_x), y=get(gene_y), color=cohort_id, shape=sample_type)) + 
+    geom_point(aes(text=paste0(cohort_id, ': ', sample_id)), alpha=0.5) +
+    theme_bw() +
+    theme(
+      axis.text.x = element_text(angle=90, hjust=1, vjust=1),
+      legend.position = 'none') +
+    labs(
+      x = paste0(gene_x, ' log2(normalized counts)'),
+      y = paste0(gene_y, ' log2(normalized counts)')
+    )
+}
+
+plot_tcga_expr_by_clinical <- function(df, gene, clinical_attr) {
+  p <- ggplot(df, aes(x=get(clinical_attr), y=get(gene)), color=cohort_id)
+  if (class(df[[clinical_attr]]) == 'character')
+      p <- p + geom_boxplot() + 
+        geom_jitter(alpha=0.5, position=position_jitter(width=0.1, height=0))
+  else { 
+    p <- p + geom_point(aes(text=paste0(cohort_id, ': ', patient_id)), alpha=0.5)
+  }
+  
+  p + theme_bw() +
+    theme(
+      axis.text.x = element_text(angle=90, hjust=1, vjust=1),
+      legend.position = 'none') +
+    labs(
+      x = clinical_attr,
+      y = paste0(gene, ' log2(normalized counts)')
+    )
+}
+
+plot_gtex_expr_pair <- function(df, gene_x, gene_y) {
+  ggplot(df, aes(x=get(gene_x), y=get(gene_y), color=tissue_id)) + 
+    geom_point(aes(text=paste0(tissue, ': ', subtype)), alpha=0.5) +
+    theme_bw() +
+    theme(
+      axis.text.x = element_text(angle=90, hjust=1, vjust=1),
+      legend.position = 'none') +
+    labs(
+      x = paste0(gene_x, ' log2(median TPM)'),
+      y = paste0(gene_y, ' log2(median TPM)')
+    )
+}
+
+plot_hpa_expr_pair <- function(df, gene_x, gene_y) {
+  ggplot(df, aes(x=get(gene_x), y=get(gene_y), color=tissue)) +
+    geom_point(aes(text=paste0(tissue, ': ', subtype)), alpha=0.5) +
+    theme_bw() +
+    theme(
+      axis.text.x = element_text(angle=90, hjust=1, vjust=1),
+      legend.position = 'none') +
+    labs(
+      x = paste0(gene_x, ' log2(TPM)'),
+      y = paste0(gene_y, ' log2(TPM)')
     )
 }
