@@ -14,6 +14,15 @@ class TableUpdates(base):
     inserted = Column(DateTime(timezone=True), server_default=func.now())
 
 
+class DataType(base):
+    __tablename__ = 'data_type'
+    data_type_id = Column(String, primary_key=True)
+    data_category = Column(String)
+    data_type = Column(String)
+    unit = Column(String, nullable=False)
+    col_data_type = Column(String, nullable=False)
+
+
 class Gene(base):
     __tablename__ = 'gene'
     gene_id = Column(Integer, primary_key=True)
@@ -77,7 +86,6 @@ class PatientValue(base):
     patient_id = Column(String, ForeignKey('patient.patient_id'),
                         primary_key=True)
     data_type = Column(String, primary_key=True)
-    unit = Column(String)
     value = Column(Numeric, nullable=False)
 
 
@@ -86,7 +94,6 @@ class PatientTextValue(base):
     patient_id = Column(String, ForeignKey('patient.patient_id'),
                         primary_key=True)
     data_type = Column(String, primary_key=True)
-    unit = Column(String)
     value = Column(String, nullable=False)
 
 
@@ -96,7 +103,6 @@ class SampleGeneValue(base):
                        primary_key=True)
     gene_id = Column(String, ForeignKey('gene.gene_id'), primary_key=True)
     data_type = Column(String, primary_key=True)
-    unit = Column(String)
     value = Column(Numeric, nullable=False)
 
 
@@ -106,7 +112,6 @@ class SampleGeneTextValue(base):
                        primary_key=True)
     gene_id = Column(String, ForeignKey('gene.gene_id'), primary_key=True)
     data_type = Column(String, primary_key=True)
-    unit = Column(String)
     value = Column(String, nullable=False)
 
 
@@ -118,7 +123,6 @@ class TissueGeneValue(base):
                        primary_key=True)
     gene_id = Column(String, ForeignKey('gene.gene_id'), primary_key=True)
     data_type = Column(String, primary_key=True)
-    unit = Column(String)
     value = Column(Numeric, nullable=False)
 
 
@@ -130,5 +134,4 @@ class CellTypeGeneTextValue(base):
                           primary_key=True)
     gene_id = Column(String, ForeignKey('gene.gene_id'), primary_key=True)
     data_type = Column(String, primary_key=True)
-    unit = Column(String)
     value = Column(String, nullable=False)

@@ -32,6 +32,16 @@ def init_db():
     models.base.metadata.create_all(bind=engine)
 
 
+def register_data_type(data_type_id, category, data_type, unit, col_type):
+    conn = engine.connect()
+    conn.execute(f'''
+        INSERT INTO data_type
+        (data_type_id, data_category, data_type, unit, col_type)
+        VALUES
+        ({data_type_id},{category},{data_type},{unit},{col_type})
+    ''')
+    conn.close()
+
 def get_ensembl_gene(ref_str):
     '''Extract Ensembl ID from NCBI gene_info dbXrefs column'''
     refs = ref_str.split('|')
