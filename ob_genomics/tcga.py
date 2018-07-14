@@ -5,8 +5,11 @@ import pandas as pd
 
 from ob_genomics.config import cfg
 import ob_genomics.database as db
+from ob_genomics.utils import is_numeric
 
 REFERENCE = cfg['REFERENCE']
+
+# TODO: move these to config.yml
 IMMUNE_LANDSCAPE = op.join(REFERENCE, 'tcga', 'immune_landscape.csv')
 TCIA_PATIENT = op.join(REFERENCE, 'tcga', 'tcia', 'patientsAll.tsv')
 TCIA_GSEA_DEPLETION = op.join(REFERENCE, 'tcga', 'tcia', 'TCIA_GSEA_depletion.tsv')
@@ -91,14 +94,6 @@ def load_tcga_sample_meta(fpath=TCGA_SAMPLE_META):
         .drop_duplicates()
         .to_sql('sample', conn, if_exists='replace', index=False))
     conn.close()
-
-
-def is_numeric(val):
-    try:
-        float(val)
-        return True
-    except ValueError:
-        return False
 
 
 def load_immune_landscape(fpath=IMMUNE_LANDSCAPE):

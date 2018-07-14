@@ -1,5 +1,3 @@
-import os.path as op
-
 import luigi
 from luigi import Task, Parameter, Target, LocalTarget
 from luigi.contrib.s3 import S3Target
@@ -54,6 +52,9 @@ class DownloadGDAC(Task):
     cohort = Parameter()
 
     def run(self):
+        raise NotImplementedError('Downloading and extracting GDAC is not yet '
+                                  'tested. Point output to a pre-populated '
+                                  'folder of extracted GDAC matrices.')
         tcga.download_gdac(self.data_type, self.cohort)
 
     def output(self):
@@ -70,6 +71,9 @@ class BuildGDACTable(Task):
         return DownloadGDAC()
 
     def run(self):
+        raise NotImplementedError('Downloading and extracting GDAC is not yet '
+                                  'tested. Point output to a pre-populated '
+                                  'folder of extracted GDAC tables.')
         with self.input().open() as f:
             tcga.gdac_to_table(f)
 
