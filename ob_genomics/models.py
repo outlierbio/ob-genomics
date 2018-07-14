@@ -7,8 +7,8 @@ from sqlalchemy.ext.declarative import declarative_base
 base = declarative_base()
 
 
-class TableUpdates(base):
-    __tablename__ = 'table_updates'
+class TableUpdate(base):
+    __tablename__ = 'table_update'
     update_id = Column(String, primary_key=True)
     target_table = Column(String)
     inserted = Column(DateTime(timezone=True), server_default=func.now())
@@ -43,8 +43,8 @@ class Sample(base):
     __tablename__ = 'sample'
     sample_id = Column(String, primary_key=True)
     patient_id = Column(String, ForeignKey('patient.patient_id'))
-    sample_code = Column(String, nullable=False)
-    sample_type = Column(String, nullable=False)
+    sample_code = Column(String)
+    sample_type = Column(String)
 
 
 class Tissue(base):

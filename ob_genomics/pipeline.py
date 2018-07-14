@@ -28,7 +28,7 @@ class DatabaseTarget(Target):
         """Mark this update as complete."""
         conn = db.engine.connect()
         conn.execute(f'''
-            INSERT INTO table_updates (update_id, target_table)
+            INSERT INTO table_update (update_id, target_table)
             VALUES ('{self.update_id}', '{self.table}')
         ''')
         conn.close()
