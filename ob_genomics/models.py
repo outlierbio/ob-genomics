@@ -15,7 +15,7 @@ class TableUpdates(base):
 
 
 ##########################
-# Experimental data tables
+# Experiment data tables
 # Think of these tables as the representing scientific observations from
 # direct assay, and data derived directly from assays. These terms are meant to
 # coincide with the general philosophy of scientific experimentation.
@@ -46,11 +46,19 @@ class TableUpdates(base):
 class Entity(base):
     __tablename__ = 'entity'
     entity_id = Column(Integer, primary_key=True)
+    accession = Column(String)
+    name = Column(String)
+    description = Column(String)
 
 
 class Assay(Entity):
     __tablename__ = 'assay'
     assay_id = Column(Integer, primary_key=True)
+
+
+class SubjectType(Entity):
+    __tablename__ = 'subject_type'
+    subject_type_id = Column(Integer, primary_key=True)
 
 
 class Subject(Entity):
@@ -66,122 +74,18 @@ class Observation(Entity):
     assay_id = Column(Integer, primary_key=True)
 
 
+class FeatureType(Entity):
+    __tablename__ = 'feature_type'
+    feature_type_id = Column(Integer, primary_key=True)
+
+
 class Feature(Entity):
     __tablename__ = 'feature'
     feature_id = Column(Integer, primary_key=True)
-
-
-class Datapoint(Entity):
-    __tablename__ = 'datapoint'
-    datapoint_id = Column(Integer, primary_key=True)
-    feature_id = Column(Integer, ForeignKey('feature.feature_id'),
-                        primary_key=True)
-    observation_id = Column(Integer, ForeignKey('observation.observation_id'),
-                            primary_key=True)
-
-
-#####################
-# Biological concepts
-# These represent well-known biological concepts. They are abstract,
-# or have complex or peripheral relationships to the experimental entities and
-# to each other, therefore kept separate from experimental entities. They can
-# have flexible and highly customized schemas, and can either inherit or link
-# to experimental entities. Some could even be pulled into a separate database
-# (e.g., NoSQL, RDF, etc) if they have fuzzier relationships.
-
-class Concept(base):
-    __tablename__ = 'concept'
-    concept_id = Column(Integer, primary_key=True)
-
-
-class EntityConcept(base):
-    __tablename__ = 'entity_concept'
-    entity_id = Column(Integer, primary_key=True)
-    concept_id = Column(Integer, primary_key=True)
-
-
-class Gene(Concept):
-    __tablename__ = 'gene'
-    gene_id = Column(Integer, primary_key=True)
-    ensembl_id = Column(String)
-    symbol = Column(String)
-
-
-class GeneFeature(EntityConcept):
-    __tablename__ = 'gene_feature'
-
-
-class Source(Concept):
-    __tablename__ = 'source'
-    source_id = Column(String, primary_key=True)
-
-
-class Cohort(Concept):
-    __tablename__ = 'cohort'
-    cohort_id = Column(String, primary_key=True)
-    source_id = Column(String, ForeignKey('source.source_id'),
-                       primary_key=True)
-
-
-class Patient(Concept):
-    __tablename__ = 'patient'
-    patient_id = Column(String, primary_key=True)
-    cohort_id = Column(String, ForeignKey('cohort.cohort_id'))
-
-
-class PatientSubject(EntityConcept):
-    __tablename__ = 'patient_subject'
-
-
-class TissueSample(Concept):
-    __tablename__ = 'tissue_sample'
-    sample_id = Column(String, primary_key=True)
-    patient_id = Column(String, ForeignKey('patient.patient_id'))
-    sample_code = Column(String, nullable=False)
-    sample_type = Column(String, nullable=False)
-
-
-class TissueSampleSubject(EntityConcept):
-    __tablename__ = 'tissue_sample_subject'
-
-
-class Tissue(Concept):
-    __tablename__ = 'tissue'
-    tissue_id = Column(String, primary_key=True)
-    tissue = Column(String, nullable=False)
-    subtype = Column(String)
-    gtex_id = Column(String)
-    hpa_id = Column(String)
-
-
-class TissueSubject(EntityConcept):
-    __tablename__ = 'tissue_sample_subject'
-
-
-class CellType(Concept):
-    __tablename__ = 'cell_type'
-    cell_type_id = Column(String, primary_key=True)
-    tissue_id = Column(String, ForeignKey('tissue.tissue_id'))
-    cell_type = Column(String, nullable=False)
-
-
-class CellTypeSubject(EntityConcept):
-    __tablename__ = 'cell_type_subject'
-
-
-class CellLine(Concept):
-    __tablename__ = 'cell_line'
-
-
-class Pathway(Concept):
-    __tablename__ = 'pathway'
-    pathway_id = Column(String, primary_key=True)
-
-
-class PathwayGene(base):
-    __tablename__ = 'pathway'
-    pathway_id = Column(String, primary_key=True)
-    gene_id = Column(Integer, primary_key=True)
+    feature_type_id = Column(
+        Integer,
+        ForeignKey('feature_type.feature_type_id'),
+        primary_key=True)
 
 
 ##############################
@@ -193,6 +97,23 @@ class PathwayGene(base):
 # flexible attributes. For example, clinical data is an attribute of a Patient
 # Entity. Both TPM and counts can be attributes of a Measurement Datapoint.
 # Genome change and protein change can be attributes of a Mutation Datapoint.
+
+class Datapoint(base):
+    __tablename__ = 'datapoint'
+    datapoint_id = Column(Integer, primary_key=True)
+    feature_id = Column(Integer, ForeignKey('feature.feature_id'),
+                        primary_key=True)
+    observation_id = Column(Integer, ForeignKey('observation.observation_id'),
+                            primary_key=True)
+
+class TextData(Datapoint):
+    __tablename__ = 'datapoint'
+    value = Column(String, nullable=False)
+
+
+class NumericData(Datapoint):
+    __tablename__ = 'datapoint'
+    value = Column(String, nullable=False)
 
 class PatientValue(base):
     __tablename__ = 'patient_value'
@@ -254,3 +175,111 @@ class CellTypeGeneTextValue(base):
     data_type = Column(String, primary_key=True)
     unit = Column(String)
     value = Column(String, nullable=False)
+
+
+#####################
+# Biological concepts
+# These represent well-known biological concepts. They are abstract,
+# or have complex or peripheral relationships to the experimental entities and
+# to each other, therefore kept separate from experimental entities. They can
+# have flexible and highly customized schemas, and can either inherit or link
+# to experimental entities. Some could even be pulled into a separate database
+# (e.g., NoSQL, RDF, etc) if they have fuzzier relationships.
+
+class Concept(base):
+    __tablename__ = 'concept'
+    concept_id = Column(Integer, primary_key=True)
+
+
+class Gene(Concept):
+    __tablename__ = 'gene'
+    gene_id = Column(Integer, primary_key=True)
+    ensembl_id = Column(String)
+    symbol = Column(String)
+
+
+class Source(Concept):
+    __tablename__ = 'source'
+    source_id = Column(String, primary_key=True)
+
+
+class Cohort(Concept):
+    __tablename__ = 'cohort'
+    cohort_id = Column(String, primary_key=True)
+    source_id = Column(String, ForeignKey('source.source_id'),
+                       primary_key=True)
+
+
+class Patient(Concept):
+    __tablename__ = 'patient'
+    patient_id = Column(String, primary_key=True)
+    cohort_id = Column(String, ForeignKey('cohort.cohort_id'))
+
+
+class TissueSample(Concept):
+    __tablename__ = 'tissue_sample'
+    sample_id = Column(String, primary_key=True)
+    patient_id = Column(String, ForeignKey('patient.patient_id'))
+    sample_code = Column(String, nullable=False)
+    sample_type = Column(String, nullable=False)
+
+
+class Tissue(Concept):
+    __tablename__ = 'tissue'
+    tissue_id = Column(String, primary_key=True)
+    tissue = Column(String, nullable=False)
+    subtype = Column(String)
+    gtex_id = Column(String)
+    hpa_id = Column(String)
+
+
+class CellType(Concept):
+    __tablename__ = 'cell_type'
+    cell_type_id = Column(String, primary_key=True)
+    tissue_id = Column(String, ForeignKey('tissue.tissue_id'))
+    cell_type = Column(String, nullable=False)
+
+
+class CellLine(Concept):
+    __tablename__ = 'cell_line'
+
+
+class Pathway(Concept):
+    __tablename__ = 'pathway'
+    pathway_id = Column(String, primary_key=True)
+
+
+class PathwayGene(base):
+    __tablename__ = 'pathway'
+    pathway_id = Column(String, primary_key=True)
+    gene_id = Column(Integer, primary_key=True)
+
+
+######################################
+# Concept to experimental entity links
+
+
+class EntityConcept(base):
+    __tablename__ = 'entity_concept'
+    entity_id = Column(Integer, primary_key=True)
+    concept_id = Column(Integer, primary_key=True)
+
+
+class CellTypeSubject(EntityConcept):
+    __tablename__ = 'cell_type_subject'
+
+
+class TissueSubject(EntityConcept):
+    __tablename__ = 'tissue_sample_subject'
+
+
+class TissueSampleSubject(EntityConcept):
+    __tablename__ = 'tissue_sample_subject'
+
+
+class PatientSubject(EntityConcept):
+    __tablename__ = 'patient_subject'
+
+
+class GeneFeature(EntityConcept):
+    __tablename__ = 'gene_feature'
