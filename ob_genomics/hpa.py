@@ -17,8 +17,8 @@ def load_hpa_protein(fpath=HPA_NORMAL_TISSUE, env=cfg['ENV']):
     cell_types = pd.read_csv(CELL_TYPES)
     df = pd.read_csv(fpath, sep='\t')
 
-    if env == 'test':
-        df = df[df['Gene name'].isin(TEST_GENES)]
+    # if env == 'test':
+    #     df = df[df['Gene name'].isin(TEST_GENES)]
 
     formatted = (
         df[df['Reliability'] != 'Uncertain']
@@ -30,18 +30,27 @@ def load_hpa_protein(fpath=HPA_NORMAL_TISSUE, env=cfg['ENV']):
         .drop_duplicates(subset=['cell_type_id', 'Gene']))
 
     conn = db.engine.connect()
+
     conn.execute("INSERT INTO source (source_id) VALUES ('HPA')")
 
-    formatted.to_sql('tmp_hpa_prot', conn, if_exists='replace', index=False)
+    # Load to temp table
+    conn.execute('DROP TABLE IF EXISTS tmp_hpa_prot')
     conn.execute('''
-        INSERT OR IGNORE INTO cell_type_gene_text_value
+        CREATE TABLE tmp_hpa_prot
+        (Gene varchar, cell_type_id varchar, Level varchar)
+    ''')
+    db.copy_from_df(formatted, 'tmp_hpa_prot')
+
+    # Insert from temp, joining to existing keys (cell type, gene)
+    conn.execute('''
+        INSERT INTO cell_type_gene_text_value
         (source_id, cell_type_id, gene_id, data_type, unit, value)
         SELECT 'HPA', tmp.cell_type_id, g.gene_id, 'protein',
                'detection level', tmp.Level
         FROM tmp_hpa_prot tmp
         INNER JOIN gene g ON g.ensembl_id = tmp.Gene
     ''')
-    conn.execute('DROP TABLE tmp_hpa_prot')
+
     conn.close()
 
 
@@ -49,8 +58,8 @@ def load_hpa_expression(fpath=HPA_RNA_TISSUE, env=cfg['ENV']):
     tissues = pd.read_csv(TISSUES)
     df = pd.read_csv(fpath, sep='\t')
 
-    if env == 'test':
-        df = df[df['Gene name'].isin(TEST_GENES)]
+    # if env == 'test':
+    #     df = df[df['Gene name'].isin(TEST_GENES)]
 
     formatted = (
         df
@@ -61,14 +70,23 @@ def load_hpa_expression(fpath=HPA_RNA_TISSUE, env=cfg['ENV']):
         .drop_duplicates(subset=['tissue_id', 'Gene']))
 
     conn = db.engine.connect()
-    formatted.to_sql('tmp_hpa_expr', conn, if_exists='replace', index=False)
+
+    # Load to temp table
+    conn.execute('DROP TABLE IF EXISTS tmp_hpa_expr')
     conn.execute('''
-        INSERT OR IGNORE INTO tissue_gene_value
+        CREATE TABLE tmp_hpa_expr
+        (Gene varchar, tissue_id varchar, Value numeric)
+    ''')
+    db.copy_from_df(formatted, 'tmp_hpa_expr')
+
+    # Insert from temp, joining to existing keys (cell type, gene)
+    conn.execute('''
+        INSERT INTO tissue_gene_value
         (source_id, tissue_id, gene_id, data_type, unit, value)
         SELECT 'HPA', tmp.tissue_id, g.gene_id, 'expression',
                'TPM', tmp.Value
         FROM tmp_hpa_expr tmp
         INNER JOIN gene g ON g.ensembl_id = tmp.Gene
     ''')
-    conn.execute('DROP TABLE tmp_hpa_expr')
+    conn.execute('DROP TABLE IF EXISTS tmp_hpa_expr')
     conn.close()

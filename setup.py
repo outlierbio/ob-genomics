@@ -17,6 +17,7 @@ setuptools.setup(
         'click',
         'luigi',
         'pandas',
+        'psycopg2',
         'PyYAML',
         'sqlalchemy'
     ],

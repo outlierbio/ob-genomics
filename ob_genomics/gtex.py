@@ -1,5 +1,4 @@
 import os.path as op
-from subprocess import check_output
 
 import pandas as pd
 
@@ -24,14 +23,20 @@ def load_gtex_median_tpm(fpath=GTEX_MEDIAN_TPM, env=cfg['ENV']):
         )
     df['ensembl_id'] = df['gene_id'].map(lambda s: s.split('.')[0])
 
-    if env == 'test':
+    if env == 'dev':
         df = df[df['Description'].isin(TEST_GENES)]
 
     conn = db.engine.connect()
     conn.execute("INSERT INTO source (source_id) VALUES ('GTEx')")
 
-    (df[['ensembl_id', 'tissue', 'median_tpm']]
-        .to_sql('tmp_gtex', conn, if_exists='replace', index=False))
+    conn.execute('''
+        CREATE TABLE tmp_gtex
+        (ensembl_id varchar, tissue varchar, median_tpm numeric)
+    ''')
+
+    selected = df[['ensembl_id', 'tissue', 'median_tpm']]
+    db.copy_from_df(selected, 'tmp_gtex')
+
     conn.execute('''
         INSERT INTO tissue_gene_value
         (source_id, tissue_id, gene_id, data_type, unit, value)
@@ -41,3 +46,7 @@ def load_gtex_median_tpm(fpath=GTEX_MEDIAN_TPM, env=cfg['ENV']):
         INNER JOIN tissue t ON t.gtex_id = tmp.tissue
         INNER JOIN gene g ON g.ensembl_id = tmp.ensembl_id
     ''')
+
+    conn.execute('DROP TABLE tmp_gtex')
+
+    conn.close()

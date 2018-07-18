@@ -4,7 +4,7 @@ import os.path as op
 import yaml
 
 # All configuration is matched to an environment (ENV)
-ENV = 'prod' if os.environ.get('ENV') is 'prod' else 'test'
+ENV = 'prod' if os.environ.get('ENV') == 'prod' else 'test'
 
 CONFIG_FILE = op.join(op.dirname(__file__), '..', 'config.yml')
 with open(CONFIG_FILE) as f:

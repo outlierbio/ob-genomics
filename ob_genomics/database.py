@@ -1,6 +1,8 @@
+import io
 import os.path as op
 
 import pandas as pd
+import psycopg2
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -9,7 +11,7 @@ from ob_genomics import models
 
 DATABASE_URI = cfg['DATABASE_URI']
 REFERENCE = cfg['REFERENCE']
-GENE_INFO = op.join(REFERENCE, 'ncbi', 'Homo_sapiens.gene_info')
+GENE = op.join(REFERENCE, 'ncbi', 'genes.hs.csv')
 TISSUE = op.join(REFERENCE, 'tissue', 'tissue.csv')
 CELL_TYPE = op.join(REFERENCE, 'tissue', 'cell_type.csv')
 TEST_GENES = [3845, 7157, 4609, 2597]
@@ -32,6 +34,28 @@ def init_db():
     models.base.metadata.create_all(bind=engine)
 
 
+def copy(output, table):
+    '''Use Postgres COPY command in production'''
+    conn = engine.raw_connection()
+    cur = conn.cursor()
+    cur.copy_from(output, table)
+    conn.commit()
+    conn.close()
+
+
+def copy_from_df(df, table):
+    output = io.StringIO()
+    df.to_csv(output, sep='\t', header=False, index=False)
+    output.seek(0)
+    output.getvalue()
+    copy(output, table)
+
+
+def copy_from_csv(fpath, table):
+    with open(fpath, 'r') as f:
+        copy(f, table)
+
+
 def get_ensembl_gene(ref_str):
     '''Extract Ensembl ID from NCBI gene_info dbXrefs column'''
     refs = ref_str.split('|')
@@ -42,23 +66,15 @@ def get_ensembl_gene(ref_str):
         return ensembl_str[0].split(':')[1]
 
 
-def load_genes(fpath=GENE_INFO):
-    gene_info = pd.read_csv(fpath, sep='\t')
-    gene_info['ensembl_id'] = gene_info['dbXrefs'].map(get_ensembl_gene)
-    gene_info = gene_info[['GeneID', 'ensembl_id', 'Symbol']]
+def load_genes(fpath=GENE):
+    gene_info = pd.read_csv(fpath)
     gene_info.columns = ['gene_id', 'ensembl_id', 'symbol']
-
-    conn = engine.connect()
-    gene_info.to_sql('gene', conn, if_exists='append', index=False)
-    conn.close()
+    copy_from_df(gene_info, 'gene')
 
 
 def load_tissues(fpath=TISSUE):
     tissue = pd.read_csv(fpath)
-
-    conn = engine.connect()
-    tissue.to_sql('tissue', conn, if_exists='append', index=False)
-    conn.close()
+    copy_from_df(tissue, 'tissue')
 
 
 def load_cell_types(fpath=CELL_TYPE):
@@ -67,10 +83,7 @@ def load_cell_types(fpath=CELL_TYPE):
         [['cell_type_id', 'tissue_id', 'cell_type']]
         .drop_duplicates(subset='cell_type_id')
     )
-
-    conn = engine.connect()
-    cell_type.to_sql('cell_type', conn, if_exists='append', index=False)
-    conn.close()
+    copy_from_df(cell_type, 'cell_type')
 
 
 def load_sample_gene_values(fpath, data_type, cols, unit, env=cfg['ENV']):
@@ -80,22 +93,12 @@ def load_sample_gene_values(fpath, data_type, cols, unit, env=cfg['ENV']):
     if 'unit' not in df.columns:
         df['unit'] = unit
     df = df[cols]
-    df.columns = ['gene_id', 'sample_id', 'data_type', 'unit', 'value']
-    df = df.drop_duplicates(subset=['gene_id', 'sample_id', 'data_type'])
+    df.columns = ['sample_id', 'gene_id', 'data_type', 'unit', 'value']
+    df = df.drop_duplicates(subset=['sample_id', 'gene_id', 'data_type'])
 
-    if env == 'test':
+    df = df[df['gene_id'] > 0]
+
+    if env == 'dev':
         df = df[df['gene_id'].isin(TEST_GENES)]
 
-    conn = engine.connect()
-    df.to_sql(f'tmp_sample_gene_values', conn,
-              if_exists='replace', index=False)
-
-    # Insert from tmp table ignoring duplicates
-    conn.execute('''
-        INSERT OR IGNORE
-        INTO sample_gene_value (gene_id, sample_id, data_type, unit, value)
-        SELECT gene_id, sample_id, data_type, unit, value
-        FROM tmp_sample_gene_values
-    ''')
-    conn.execute('DROP TABLE tmp_sample_gene_values')
-    conn.close()
+    copy_from_df(df, 'sample_gene_value')

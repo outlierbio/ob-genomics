@@ -12,10 +12,13 @@ REFERENCE = cfg['REFERENCE']
 # TODO: move these to config.yml
 IMMUNE_LANDSCAPE = op.join(REFERENCE, 'tcga', 'immune_landscape.csv')
 TCIA_PATIENT = op.join(REFERENCE, 'tcga', 'tcia', 'patientsAll.tsv')
-TCIA_GSEA_DEPLETION = op.join(REFERENCE, 'tcga', 'tcia', 'TCIA_GSEA_depletion.tsv')
-TCIA_GSEA_ENRICHMENT = op.join(REFERENCE, 'tcga', 'tcia', 'TCIA_GSEA_enrichment.tsv')
-TCGA_SAMPLE_META = op.join(REFERENCE, 'tcga', 'sample_meta.csv')
-TCGA_COHORT_META = op.join(REFERENCE, 'tcga', 'cohort.csv')
+TCIA_GSEA_DEPLETION = op.join(REFERENCE, 'tcga', 'tcia',
+                              'TCIA_GSEA_depletion.tsv')
+TCIA_GSEA_ENRICHMENT = op.join(REFERENCE, 'tcga', 'tcia',
+                               'TCIA_GSEA_enrichment.tsv')
+TCGA_SAMPLE_META = op.join(REFERENCE, 'tcga', 'sample_meta', 'sample.csv')
+TCGA_PATIENT_META = op.join(REFERENCE, 'tcga', 'sample_meta', 'patient.csv')
+TCGA_COHORT_META = op.join(REFERENCE, 'tcga', 'sample_meta', 'cohort.csv')
 TCGA_SAMPLE_CODE = op.join(REFERENCE, 'tcga', 'sample_code.csv')
 GDAC_LATEST = '2016_07_15'
 TEST_GENES = [3845, 7157, 4609, 2597]
@@ -72,27 +75,29 @@ def extract_gdac(data_type):
         ''')
 
 
-def load_tcga_sample_meta(fpath=TCGA_SAMPLE_META):
-    meta = pd.read_csv(fpath)
-    meta = meta[['cohort', 'patient', 'sample', 'sample_code', 'sample_type']]
-    meta.columns = ['cohort_id', 'patient_id', 'sample_id', 'sample_code',
-                    'sample_type']
-    meta['source_id'] = 'TCGA'
+def load_tcga_sample_meta(cohort_fpath=TCGA_COHORT_META,
+                          patient_fpath=TCGA_PATIENT_META,
+                          sample_fpath=TCGA_SAMPLE_META):
 
     conn = db.engine.connect()
     conn.execute("INSERT INTO source (source_id) VALUES ('TCGA')")
-    (meta
-        [['cohort_id', 'source_id']]
-        .drop_duplicates()
-        .to_sql('cohort', conn, if_exists='replace', index=False))
-    (meta
-        [['patient_id', 'cohort_id']]
-        .drop_duplicates()
-        .to_sql('patient', conn, if_exists='replace', index=False))
-    (meta
-        [['sample_id', 'patient_id', 'sample_code', 'sample_type']]
-        .drop_duplicates()
-        .to_sql('sample', conn, if_exists='replace', index=False))
+
+    cohort = (pd.read_csv(cohort_fpath)
+              .assign(source_id='TCGA')
+              [['cohort_id', 'source_id', 'cohort_name']]
+              .drop_duplicates())
+    db.copy_from_df(cohort, 'cohort')
+
+    patient = (pd.read_csv(patient_fpath)
+               [['patient_id', 'cohort_id']]
+               .drop_duplicates(subset=['patient_id']))
+    db.copy_from_df(patient, 'patient')
+
+    sample = (pd.read_csv(sample_fpath)
+              [['sample_id', 'patient_id', 'sample_code', 'sample_type']]
+              .drop_duplicates())
+    db.copy_from_df(sample, 'sample')
+
     conn.close()
 
 
@@ -106,6 +111,7 @@ def load_immune_landscape(fpath=IMMUNE_LANDSCAPE):
             'Neutrophils.0': 'Neutrophils score',
             'Eosinophils.1': 'Eosinophils',
             'Neutrophils.1': 'Neutrophils'})
+        .dropna(subset=['Wound Healing'])
         .melt(id_vars='patient_id', var_name='data_type', value_name='value')
     )
 
@@ -120,14 +126,15 @@ def load_immune_landscape(fpath=IMMUNE_LANDSCAPE):
 
     # Load to database in respective tables
     conn = db.engine.connect()
-    (df_numeric[['patient_id', 'data_type', 'unit', 'value']]
-        .drop_duplicates(subset=['patient_id', 'data_type'])
-        .dropna(subset=['value'])
-        .to_sql('patient_value', conn, if_exists='append', index=False))
-    (df_text[['patient_id', 'data_type', 'unit', 'value']]
-        .drop_duplicates(subset=['patient_id', 'data_type'])
-        .dropna(subset=['value'])
-        .to_sql('patient_text_value', conn, if_exists='append', index=False))
+    df_numeric = (df_numeric[['patient_id', 'data_type', 'unit', 'value']]
+                  .drop_duplicates(subset=['patient_id', 'data_type'])
+                  .dropna(subset=['value']))
+    db.copy_from_df(df_numeric,  'patient_value')
+
+    df_text = (df_text[['patient_id', 'data_type', 'unit', 'value']]
+               .drop_duplicates(subset=['patient_id', 'data_type'])
+               .dropna(subset=['value']))
+    db.copy_from_df(df_text, 'patient_text_value')
     conn.close()
 
 
@@ -159,7 +166,8 @@ def load_tcia_patient(fpath=TCIA_PATIENT):
     conn.close()
 
 
-def load_tcia_pathways(up_fpath=TCIA_GSEA_ENRICHMENT, down_fpath=TCIA_GSEA_DEPLETION):
+def load_tcia_pathways(up_fpath=TCIA_GSEA_ENRICHMENT,
+                       down_fpath=TCIA_GSEA_DEPLETION):
     for fpath in up_fpath, down_fpath:
         df = (
             pd.read_csv(fpath, sep='\t')
@@ -174,20 +182,19 @@ def load_tcia_pathways(up_fpath=TCIA_GSEA_ENRICHMENT, down_fpath=TCIA_GSEA_DEPLE
         df['unit'] = 'normalized enrichment score'
 
         # Load to database in respective tables
-        conn = db.engine.connect()
-        (df[['patient_id', 'data_type', 'unit', 'value']]
-            .drop_duplicates(subset=['patient_id', 'data_type'])
-            .dropna(subset=['value'])
-            .to_sql('patient_value', conn, if_exists='append', index=False))
-        conn.close()
+        df = (df[['patient_id', 'data_type', 'unit', 'value']]
+              .drop_duplicates(subset=['patient_id', 'data_type'])
+              .dropna(subset=['value']))
+        db.copy_from_df(df, 'patient_value')
 
 
 def load_tcga_profile(data_type, fpath):
         if data_type == 'copy number':
-            cols = ['entrez_id', 'sample', 'data_type', 'unit', 'copy_number']
+            cols = ['sample', 'entrez_id', 'data_type', 'unit', 'copy_number']
             unit = 'log2 ratio'
         elif data_type == 'expression':
-            cols = ['entrez_id', 'sample', 'data_type', 'unit', 'normalized_counts']
+            cols = ['sample', 'entrez_id', 'data_type', 'unit',
+                    'normalized_counts']
             unit = 'normalized_counts'
         else:
             raise ValueError('Data type not recognized')
@@ -210,13 +217,10 @@ def load_tcga_clinical(fpath):
     df_numeric = df[df['is_numeric']]
     df_text = df[~df['is_numeric']]
 
-    conn = db.engine.connect()
-
-    (df_numeric[['patient_id', 'data_type', 'unit', 'value']]
-        .to_sql('patient_value', conn, if_exists='append', index=False))
-    (df_text[['patient_id', 'data_type', 'unit', 'value']]
-        .to_sql('patient_text_value', conn, if_exists='append', index=False))
-    conn.close()
+    df_numeric = df_numeric[['patient_id', 'data_type', 'unit', 'value']]
+    db.copy_from_df(df_numeric, 'patient_value')
+    df_text = df_text[['patient_id', 'data_type', 'unit', 'value']]
+    db.copy_from_df(df_text, 'patient_text_value')
 
 
 def load_tcga_mutation(fpath, env=cfg['ENV']):
@@ -230,8 +234,9 @@ def load_tcga_mutation(fpath, env=cfg['ENV']):
         'Variant_Type': 'variant type',
         'Variant_Classification': 'variant classification',
         'AAChange': 'AA change'})
+    df = df[df['gene_id'] > 0]
 
-    if env == 'test':
+    if env == 'dev':
         df = df[df['gene_id'].isin(TEST_GENES)]
 
     df = df.melt(id_vars=['sample_id', 'gene_id'],
@@ -240,8 +245,5 @@ def load_tcga_mutation(fpath, env=cfg['ENV']):
     df = df.drop_duplicates(subset=['gene_id', 'sample_id', 'data_type'])
     df = df.dropna(subset=['value'])
 
-    conn = db.engine.connect()
-
-    (df[['sample_id', 'gene_id', 'data_type', 'unit', 'value']]
-        .to_sql('sample_gene_text_value', conn, if_exists='append', index=False))
-    conn.close()
+    df = df[['sample_id', 'gene_id', 'data_type', 'unit', 'value']]
+    db.copy_from_df(df, 'sample_gene_text_value')

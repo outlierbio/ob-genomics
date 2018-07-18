@@ -36,7 +36,7 @@ class DatabaseTarget(Target):
     def exists(self):
         conn = db.engine.connect()
         res = conn.execute(f'''
-            SELECT 1 FROM table_updates
+            SELECT 1 FROM table_update
             WHERE update_id = '{self.update_id}'
             LIMIT 1
         ''')
@@ -88,12 +88,10 @@ class LoadTCGAClinical(Task):
     cohort = Parameter()
 
     def requires(self):
-        return (LoadTCGASampleMeta(),
-                BuildGDACTable(data_type='clinical', cohort=self.cohort))
+        return BuildGDACTable(data_type='clinical', cohort=self.cohort)
 
     def run(self):
-        _, table = self.input()
-        tcga.load_tcga_clinical(table.path)
+        tcga.load_tcga_clinical(self.input().path)
         self.output().touch()
 
     def output(self):
@@ -101,19 +99,7 @@ class LoadTCGAClinical(Task):
         return DatabaseTarget('patient_value,patient_text_value', update_id)
 
 
-class LoadTCGASampleMeta(Task):
-    def run(self):
-        tcga.load_tcga_sample_meta()
-        self.output().touch()
-
-    def output(self):
-        return DatabaseTarget('cohort,patient,sample', 'TCGA sample metadata')
-
-
 class LoadImmuneLandscape(Task):
-
-    def requires(self):
-        return LoadTCGASampleMeta()
 
     def run(self):
         tcga.load_immune_landscape()
@@ -125,9 +111,6 @@ class LoadImmuneLandscape(Task):
 
 class LoadTCIAPatient(Task):
 
-    def requires(self):
-        return LoadTCGASampleMeta()
-
     def run(self):
         tcga.load_tcia_patient()
         self.output().touch()
@@ -137,9 +120,6 @@ class LoadTCIAPatient(Task):
 
 
 class LoadTCIAPathways(Task):
-
-    def requires(self):
-        return LoadTCGASampleMeta()
 
     def run(self):
         tcga.load_tcia_pathways()
@@ -154,12 +134,10 @@ class LoadTCGAMutation(Task):
     cohort = Parameter()
 
     def requires(self):
-        return (LoadTCGASampleMeta(),
-                BuildGDACTable(data_type='mutation', cohort=self.cohort))
+        return BuildGDACTable(data_type='mutation', cohort=self.cohort)
 
     def run(self):
-        _, table = self.input()
-        tcga.load_tcga_mutation(table.path)
+        tcga.load_tcga_mutation(self.input().path)
         self.output().touch()
 
     def output(self):
@@ -173,12 +151,10 @@ class LoadTCGAProfile(Task):
     cohort = Parameter()
 
     def requires(self):
-        return (LoadTCGASampleMeta(),
-                BuildGDACTable(data_type=self.data_type, cohort=self.cohort))
+        return BuildGDACTable(data_type=self.data_type, cohort=self.cohort)
 
     def run(self):
-        _, table = self.input()
-        tcga.load_tcga_profile(self.data_type, table.path)
+        tcga.load_tcga_profile(self.data_type, self.input().path)
         self.output().touch()
 
     def output(self):
@@ -188,7 +164,7 @@ class LoadTCGAProfile(Task):
 
 class LoadTCGA(Task):
     def requires(self):
-        if cfg['ENV'] == 'test':
+        if cfg['ENV'] == 'dev':
             cohorts = ['ACC', 'CHOL', 'DLBC']
         else:
             cohorts = pd.read_csv(tcga.TCGA_COHORT_META)['cohort_id']
@@ -196,9 +172,9 @@ class LoadTCGA(Task):
         for cohort in cohorts:
             if cohort in ['LCML', 'FPPP', 'CNTL', 'MISC']:
                 continue
-            yield LoadTCGAClinical(cohort=cohort)
-            yield LoadTCGAMutation(cohort=cohort)
-            yield LoadTCGAProfile(data_type='copy number', cohort=cohort)
+            # yield LoadTCGAClinical(cohort=cohort)
+            # yield LoadTCGAMutation(cohort=cohort)
+            # yield LoadTCGAProfile(data_type='copy number', cohort=cohort)
             yield LoadTCGAProfile(data_type='expression', cohort=cohort)
 
 
@@ -231,11 +207,10 @@ class LoadHPAExpression(Task):
 
 def build():
     luigi.build([
-        LoadTCGASampleMeta(),
         LoadTCGA(),
         LoadImmuneLandscape(),
-        LoadTCIAPatient(),
-        LoadTCIAPathways(),
+        # LoadTCIAPatient(),
+        # LoadTCIAPathways(),
         LoadGTEx(),
         LoadHPAProtein(),
         LoadHPAExpression()
