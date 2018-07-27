@@ -172,9 +172,9 @@ class LoadTCGA(Task):
         for cohort in cohorts:
             if cohort in ['LCML', 'FPPP', 'CNTL', 'MISC']:
                 continue
-            # yield LoadTCGAClinical(cohort=cohort)
-            # yield LoadTCGAMutation(cohort=cohort)
-            # yield LoadTCGAProfile(data_type='copy number', cohort=cohort)
+            yield LoadTCGAClinical(cohort=cohort)
+            yield LoadTCGAMutation(cohort=cohort)
+            yield LoadTCGAProfile(data_type='copy number', cohort=cohort)
             yield LoadTCGAProfile(data_type='expression', cohort=cohort)
 
 
@@ -209,8 +209,8 @@ def build():
     luigi.build([
         LoadTCGA(),
         LoadImmuneLandscape(),
-        # LoadTCIAPatient(),
-        # LoadTCIAPathways(),
+        LoadTCIAPatient(),
+        LoadTCIAPathways(),
         LoadGTEx(),
         LoadHPAProtein(),
         LoadHPAExpression()
