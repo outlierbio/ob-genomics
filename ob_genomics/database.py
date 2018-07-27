@@ -2,7 +2,6 @@ import io
 import os.path as op
 
 import pandas as pd
-import psycopg2
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -12,6 +11,7 @@ from ob_genomics import models
 DATABASE_URI = cfg['DATABASE_URI']
 REFERENCE = cfg['REFERENCE']
 GENE = op.join(REFERENCE, 'ncbi', 'genes.hs.csv')
+GENE_HISTORY = op.join(REFERENCE, 'ncbi', 'gene_history.hs.tsv')
 TISSUE = op.join(REFERENCE, 'tissue', 'tissue.csv')
 CELL_TYPE = op.join(REFERENCE, 'tissue', 'cell_type.csv')
 TEST_GENES = [3845, 7157, 4609, 2597]
@@ -66,10 +66,26 @@ def get_ensembl_gene(ref_str):
         return ensembl_str[0].split(':')[1]
 
 
-def load_genes(fpath=GENE):
-    gene_info = pd.read_csv(fpath)
+def load_genes(gene_info_fpath=GENE, gene_history_fpath=GENE_HISTORY):
+    gene_info = pd.read_csv(gene_info_fpath)
     gene_info.columns = ['gene_id', 'ensembl_id', 'symbol']
-    copy_from_df(gene_info, 'gene')
+
+    gene_history = pd.read_csv(gene_history_fpath, sep="\t")
+    gene_history.columns = [
+        "taxid",
+        "new_gene_id",
+        "gene_id",
+        "symbol",
+        "discontinued_date",
+    ]
+    gene_history["ensembl_id"] = None
+
+    df = pd.concat([
+        gene_info,
+        gene_history[["gene_id", "ensembl_id", "symbol"]]
+    ]).drop_duplicates(subset=['gene_id'])
+
+    copy_from_df(df, 'gene')
 
 
 def load_tissues(fpath=TISSUE):

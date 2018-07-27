@@ -22,6 +22,70 @@ TCGA_COHORT_META = op.join(REFERENCE, 'tcga', 'sample_meta', 'cohort.csv')
 TCGA_SAMPLE_CODE = op.join(REFERENCE, 'tcga', 'sample_code.csv')
 GDAC_LATEST = '2016_07_15'
 TEST_GENES = [3845, 7157, 4609, 2597]
+IMMUNE_LANDSCAPE_UNITS = {
+    'Immune Subtype': 'subtype',
+    'TCGA Subtype': 'subtype',
+    'Leukocyte Fraction': 'fraction',
+    'Stromal Fraction': 'fraction',
+    'Intratumor Heterogeneity': 'fraction',
+    'TIL Regional Fraction': 'fraction',
+    'Proliferation': 'score',
+    'Wound Healing': 'score',
+    'Macrophage Regulation': 'score',
+    'Lymphocyte Infiltration Signature Score': 'score',
+    'IFN-gamma Response': 'score',
+    'TGF-beta Response': 'score',
+    'SNV Neoantigens': 'count',
+    'Indel Neoantigens': 'count',
+    'Silent Mutation Rate': 'rate',
+    'Nonsilent Mutation Rate': 'rate',
+    'Number of Segments': 'count',
+    'Fraction Altered': 'fraction',
+    'Aneuploidy Score': 'score',
+    'Homologous Recombination Defects': 'count',
+    'BCR Evenness': 'score',
+    'BCR Shannon': 'score',
+    'BCR Richness': 'score',
+    'TCR Shannon': 'score',
+    'TCR Richness': 'score',
+    'TCR Evenness': 'score',
+    'CTA Score': 'score',
+    'Th1 Cells': 'score',
+    'Th2 Cells': 'score',
+    'Th17 Cells': 'score',
+    'OS': 'censored',
+    'OS Time': 'days',
+    'PFI': 'censored',
+    'PFI Time': 'days',
+    'B Cells Memory': 'signature score',
+    'B Cells Naive': 'signature score',
+    'Dendritic Cells Activated': 'signature score',
+    'Dendritic Cells Resting': 'signature score',
+    'Eosinophils score': 'signature score',
+    'Macrophages M0': 'signature score',
+    'Macrophages M1': 'signature score',
+    'Macrophages M2': 'signature score',
+    'Mast Cells Activated': 'signature score',
+    'Mast Cells Resting': 'signature score',
+    'Monocytes': 'signature score',
+    'Neutrophils score': 'signature score',
+    'NK Cells Activated': 'signature score',
+    'NK Cells Resting': 'signature score',
+    'Plasma Cells': 'signature score',
+    'T Cells CD4 Memory Activated': 'signature score',
+    'T Cells CD4 Memory Resting': 'signature score',
+    'T Cells CD4 Naive': 'signature score',
+    'T Cells CD8': 'signature score',
+    'T Cells Follicular Helper': 'signature score',
+    'T Cells gamma delta': 'signature score',
+    'T Cells Regulatory Tregs': 'signature score',
+    'Lymphocytes': 'signature score',
+    'Neutrophils': 'signature score',
+    'Eosinophils': 'signature score',
+    'Mast Cells': 'signature score',
+    'Dendritic Cells': 'signature score',
+    'Macrophages': 'signature score',
+}
 
 gdac_params = {
     'mutation': {
@@ -48,15 +112,15 @@ gdac_params = {
 
 
 def download_gdac(data_type, cohort, date=GDAC_LATEST):
-        params = gdac_params['data_type']
-        short_date = date.replace('_', '')
-        folder = f"{params['run_type']}__{date}/{cohort}/{short_date}"
-        check_output(f'''
-            firehose_get -o {params['data_type']} \
-                {params['run_type']} {date} {cohort}
-            tar -xvf {folder}/gdac.broadinstitute.org_{cohort}.{params['data_type']}*.tar.gz -C {folder}/
-            cp {folder}/*{cohort}.{params['data_type']}*/*{params['clinical']['filename']}
-        ''', shell=True)
+    params = gdac_params['data_type']
+    short_date = date.replace('_', '')
+    folder = f"{params['run_type']}__{date}/{cohort}/{short_date}"
+    check_output(f'''
+        firehose_get -o {params['data_type']} \
+            {params['run_type']} {date} {cohort}
+        tar -xvf {folder}/gdac.broadinstitute.org_{cohort}.{params['data_type']}*.tar.gz -C {folder}/
+        cp {folder}/*{cohort}.{params['data_type']}*/*{params['clinical']['filename']}
+    ''', shell=True)
 
 
 def extract_gdac(data_type):
@@ -115,8 +179,7 @@ def load_immune_landscape(fpath=IMMUNE_LANDSCAPE):
         .melt(id_vars='patient_id', var_name='data_type', value_name='value')
     )
 
-    immune_landscape_units = {'Immune Subtype': 'subtype', 'TCGA Subtype': 'subtype', 'Leukocyte Fraction': 'fraction', 'Stromal Fraction': 'fraction', 'Intratumor Heterogeneity': 'fraction', 'TIL Regional Fraction': 'fraction', 'Proliferation': 'score', 'Wound Healing': 'score', 'Macrophage Regulation': 'score', 'Lymphocyte Infiltration Signature Score': 'score', 'IFN-gamma Response': 'score', 'TGF-beta Response': 'score', 'SNV Neoantigens': 'count', 'Indel Neoantigens': 'count', 'Silent Mutation Rate': 'rate', 'Nonsilent Mutation Rate': 'rate', 'Number of Segments': 'count', 'Fraction Altered': 'fraction', 'Aneuploidy Score': 'score', 'Homologous Recombination Defects': 'count', 'BCR Evenness': 'score', 'BCR Shannon': 'score', 'BCR Richness': 'score', 'TCR Shannon': 'score', 'TCR Richness': 'score', 'TCR Evenness': 'score', 'CTA Score': 'score', 'Th1 Cells': 'score', 'Th2 Cells': 'score', 'Th17 Cells': 'score', 'OS': 'censored', 'OS Time': 'days', 'PFI': 'censored', 'PFI Time': 'days', 'B Cells Memory': 'signature score', 'B Cells Naive': 'signature score', 'Dendritic Cells Activated': 'signature score', 'Dendritic Cells Resting': 'signature score', 'Eosinophils score': 'signature score', 'Macrophages M0': 'signature score', 'Macrophages M1': 'signature score', 'Macrophages M2': 'signature score', 'Mast Cells Activated': 'signature score', 'Mast Cells Resting': 'signature score', 'Monocytes': 'signature score', 'Neutrophils score': 'signature score', 'NK Cells Activated': 'signature score', 'NK Cells Resting': 'signature score', 'Plasma Cells': 'signature score', 'T Cells CD4 Memory Activated': 'signature score', 'T Cells CD4 Memory Resting': 'signature score', 'T Cells CD4 Naive': 'signature score', 'T Cells CD8': 'signature score', 'T Cells Follicular Helper': 'signature score', 'T Cells gamma delta': 'signature score', 'T Cells Regulatory Tregs': 'signature score', 'Lymphocytes': 'signature score', 'Neutrophils': 'signature score', 'Eosinophils': 'signature score', 'Mast Cells': 'signature score', 'Dendritic Cells': 'signature score', 'Macrophages': 'signature score'}
-    df['unit'] = df['data_type'].map(lambda dt: immune_landscape_units[dt])
+    df["unit"] = df["data_type"].map(lambda dt: IMMUNE_LANDSCAPE_UNITS[dt])
 
     # Split into numeric values and text values
     df['is_numeric'] = df['value'].map(is_numeric)
@@ -189,17 +252,22 @@ def load_tcia_pathways(up_fpath=TCIA_GSEA_ENRICHMENT,
 
 
 def load_tcga_profile(data_type, fpath):
-        if data_type == 'copy number':
-            cols = ['sample', 'entrez_id', 'data_type', 'unit', 'copy_number']
-            unit = 'log2 ratio'
-        elif data_type == 'expression':
-            cols = ['sample', 'entrez_id', 'data_type', 'unit',
-                    'normalized_counts']
-            unit = 'normalized_counts'
-        else:
-            raise ValueError('Data type not recognized')
+    if data_type == "copy number":
+        cols = ["sample", "entrez_id", "data_type", "unit", "copy_number"]
+        unit = "log2 ratio"
+    elif data_type == "expression":
+        cols = [
+            "sample",
+            "entrez_id",
+            "data_type",
+            "unit",
+            "normalized_counts",
+        ]
+        unit = "normalized_counts"
+    else:
+        raise ValueError("Data type not recognized")
 
-        db.load_sample_gene_values(fpath, data_type, cols, unit)
+    db.load_sample_gene_values(fpath, data_type, cols, unit)
 
 
 def load_tcga_clinical(fpath):
@@ -225,8 +293,30 @@ def load_tcga_clinical(fpath):
 
 def load_tcga_mutation(fpath, env=cfg['ENV']):
     maf = pd.read_csv(fpath, sep='\t')
-    df = maf[['Entrez_Gene_Id', 'Tumor_Sample_Barcode',
-              'Variant_Classification', 'Variant_Type', 'AAChange']]
+    if 'Protein_Change' in maf.columns:
+        df = maf[
+            [
+                'Entrez_Gene_Id',
+                'Tumor_Sample_Barcode',
+                'Variant_Classification',
+                'Variant_Type',
+                'Protein_Change',
+            ]
+        ]
+    elif 'AAChange' in maf.columns:
+        df = maf[
+            [
+                'Entrez_Gene_Id',
+                'Tumor_Sample_Barcode',
+                'Variant_Classification',
+                'Variant_Type',
+                'AAChange',
+            ]
+        ]
+    else:
+        raise Exception(
+            'MAF file should have either Protein_Change or AAChange column'
+        )
     df['sample_id'] = df['Tumor_Sample_Barcode'].map(lambda s: s[:15])
     df = df.drop('Tumor_Sample_Barcode', axis=1)
     df = df.rename(columns={
