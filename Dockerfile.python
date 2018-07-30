@@ -1,0 +1,22 @@
+FROM python:3
+MAINTAINER Jake Feala <jake@outlierbio.com>
+
+# Conda packages
+RUN pip install -y \
+
+# pip packages
+RUN pip install \
+	awscli \
+	boto3 \
+	click \
+	ipython \
+	luigi \
+	pandas \
+    psycopg2 \
+	PyYAML' \
+    sqlalchemy
+
+COPY . /src
+RUN pip install -e /src
+
+ENTRYPOINT ["ob-genomics"]
