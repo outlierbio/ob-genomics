@@ -1,10 +1,18 @@
 library(dbplyr)
-library(RSQLite)
+library(RPostgreSQL)
 library(tidyverse)
 library(tidyr)
 
+source('creds.r')
+
 # Connect to DB
-db <- DBI::dbConnect(RSQLite::SQLite(), 'ob_genomics.db')
+db <- DBI::dbConnect(
+  dbDriver('PostgreSQL'), 
+  host=host,
+  user=user,
+  password=password,
+  dbname=dbname
+)
 
 ###############
 # Entity tables
