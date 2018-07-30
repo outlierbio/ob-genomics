@@ -6,3 +6,5 @@ app/rsconnect
 ob_genomics.db
 deploy.r
 config.yml
+creds.r
+logs
