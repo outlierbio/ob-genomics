@@ -1,0 +1,16 @@
+FROM rocker/rstudio
+
+MAINTAINER Jake Feala <jake@outlierbio.com>
+
+RUN apt-get update -y && apt-get install -y \
+	git \
+	libpq-dev \
+	libxml2-dev \
+	libssl-dev \
+	postgresql-client \
+	zlib1g-dev
+
+ADD install_*.r /src/
+RUN Rscript /src/install_cran.r
+RUN Rscript /src/install_app_extras.r
+
