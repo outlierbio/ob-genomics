@@ -14,8 +14,8 @@ genes <- gene %>%
   arrange(symbol) %>%
   collect %>% 
   .$symbol
-clinical_attributes <- c('gender', 'days_to_death', 'years_to_birth', 'vital status')
-# clinical_attributes <- all_clinical_attributes()
+#clinical_attributes <- c('gender', 'days_to_death', 'years_to_birth', 'vital status')
+clinical_attributes <- all_clinical_attributes()
 
 ui <- fluidPage(
 	titlePanel(title = 'Outlier bio genomics app', windowTitle = 'OB genomics'),
