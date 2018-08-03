@@ -9,6 +9,7 @@ source('creds.r')
 db <- DBI::dbConnect(
   dbDriver('PostgreSQL'), 
   host=host,
+  port=port,
   user=user,
   password=password,
   dbname=dbname
@@ -134,15 +135,19 @@ all_signatures <- function() {
 tcga_clinical_by_attr <- function(clinical_attr) {
   txt_clinical <- patient_clinical_text %>%
     filter(data_type == clinical_attr) %>%
-    collect %>%
-    spread(data_type, value)
+    collect
   
   num_clinical <- patient_clinical_value %>%
     filter(data_type == clinical_attr) %>%
-    collect %>%
-    spread(data_type, value)
+    collect
   
-  rbind(txt_clinical, num_clinical)  # one of these should be empty
+  if(nrow(txt_clinical) > 0) 
+    txt_clinical %>%
+      spread(data_type, value)
+  else
+    num_clinical %>%
+      spread(data_type, value)
+  
 }
 
 tcga_expr_by_gene <- function(gene) {

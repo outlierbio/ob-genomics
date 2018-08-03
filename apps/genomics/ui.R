@@ -1,12 +1,19 @@
 library(shiny)
 library(DT)
+library(dplyr)
 library(plotly)
 library(tidyverse)
 
 source('database.r')
 source('plots.r')
 
-genes <- c('GAPDH', 'TP53', 'KRAS', 'MYC')
+#genes <- c('GAPDH', 'TP53', 'KRAS', 'MYC')
+genes <- gene %>% 
+  filter(ensembl_id != '') %>%
+  select(symbol) %>% 
+  arrange(symbol) %>%
+  collect %>% 
+  .$symbol
 clinical_attributes <- c('gender', 'days_to_death', 'years_to_birth', 'vital status')
 # clinical_attributes <- all_clinical_attributes()
 
@@ -79,7 +86,7 @@ ui <- fluidPage(
                               multiple = FALSE),
                selectizeInput(inputId = 'clinical_attr',
                               label = 'Select clinical attribute (x-axis)',
-                              choices = clinical_attributes, selected = 'gender',
+                              choices = clinical_attributes, selected = 'days_to_death',
                               multiple = FALSE)
                
              ),
