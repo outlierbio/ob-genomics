@@ -24,8 +24,8 @@ ui <- fluidPage(
     tabPanel('Tissue',
       sidebarPanel(
         selectizeInput(inputId = 'gene_tissue', label = 'Select gene(s)',
-                       choices = genes, selected = c('GAPDH', 'MYC', 'TP53'),
-                       multiple = TRUE)
+                       choices = genes, selected = 'KRAS',
+                       multiple = FALSE)
       ),
       mainPanel(
         h2('GTEx expression by tissue'),
@@ -41,9 +41,9 @@ ui <- fluidPage(
 
     tabPanel('Cancer',
       sidebarPanel(
-        selectizeInput(inputId = 'gene_cancer', label = 'Select gene(s)',
-                       choices = genes, selected = c('GAPDH', 'MYC', 'TP53'),
-                       multiple = TRUE)
+        selectInput(inputId = 'gene_cancer', label = 'Select gene(s)',
+                    choices = genes, selected = 'KRAS', multiple = FALSE,
+                    selectize=FALSE)
       ),
       mainPanel(
         h2('TCGA expression by cohort'),
@@ -55,9 +55,9 @@ ui <- fluidPage(
     
     tabPanel('Immuno-oncology',
       sidebarPanel(
-        selectizeInput(inputId = 'gene_immune', label = 'Select gene(s)',
-                       choices = genes, selected = c('GAPDH', 'MYC', 'TP53'),
-                       multiple = TRUE),
+        selectInput(inputId = 'gene_immune', label = 'Select gene(s)',
+                    choices = genes, selected = 'KRAS', multiple = FALSE,
+                    selectize=FALSE),
         selectizeInput(inputId = 'component', label = 'Select fractional component(s)',
                        choices = all_components(), selected = c('Leukocyte Fraction', 'Stromal Fraction', 'TIL Regional Fraction'),
                        multiple = TRUE),
@@ -78,16 +78,16 @@ ui <- fluidPage(
 
     tabPanel('Correlations',
              sidebarPanel(
-               selectizeInput(inputId = 'gene_x', label = 'Select gene (x-axis)',
-                              choices = genes, selected = 'GAPDH',
-                              multiple = FALSE),
-               selectizeInput(inputId = 'gene_y', label = 'Select gene (y-axis)',
-                              choices = genes, selected = 'MYC',
-                              multiple = FALSE),
-               selectizeInput(inputId = 'clinical_attr',
+               selectInput(inputId = 'gene_x', label = 'Select gene (x-axis)',
+                              choices = genes, selected = 'GAPDH', multiple = FALSE,
+                              selectize=FALSE),
+               selectInput(inputId = 'gene_y', label = 'Select gene (y-axis)',
+                              choices = genes, selected = 'MYC', multiple = FALSE,
+                              selectize=FALSE),
+               selectInput(inputId = 'clinical_attr',
                               label = 'Select clinical attribute (x-axis)',
                               choices = clinical_attributes, selected = 'days_to_death',
-                              multiple = FALSE)
+                              multiple = FALSE, selectize=FALSE)
                
              ),
              mainPanel(
