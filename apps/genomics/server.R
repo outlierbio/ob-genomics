@@ -4,8 +4,12 @@ library(tidyverse)
 source("database.r")
 
 server <- function(input, output, session) {
-  tcga_expr <- reactive(tcga_expr_by_gene(input$gene_cancer))
-  tcga_mut <- reactive(tcga_mut_by_gene(input$gene_cancer))
+  tcga_expr <- reactive(
+    tcga_expr_by_gene(input$gene_cancer, input$cohorts_cancer)
+  )
+  tcga_mut <- reactive(
+    tcga_mut_by_gene(input$gene_cancer, input$cohorts_cancer)
+  )
   tcga_expr_immune_subtype <- reactive(
     tcga_expr_immune_subtype_by_gene(input$gene_immune)
   )

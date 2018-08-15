@@ -1,4 +1,5 @@
 plot_tcga_by_cohort <- function(df) {
+  print(df)
   ggplot(
     df,
     aes(x = cohort_id, y = log2(normalized_counts + 1), color = sample_type)
