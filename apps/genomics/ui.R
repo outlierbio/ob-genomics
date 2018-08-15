@@ -14,6 +14,12 @@ genes <- gene %>%
   collect() %>%
   .$symbol
 
+cohorts <- cohort %>%
+  select(cohort_id) %>%
+  arrange(cohort_id) %>%
+  collect() %>%
+  .$cohort_id
+
 clinical_attributes <- all_clinical_attributes()
 
 ui <- fluidPage(
@@ -49,6 +55,11 @@ ui <- fluidPage(
           inputId = "gene_cancer", label = "Select gene(s)",
           choices = genes, selected = "KRAS", multiple = FALSE,
           selectize = FALSE
+        ),
+        selectizeInput(
+          inputId = "cohorts_cancer", label = "Select tumor type(s)",
+          choices = cohorts, multiple = TRUE,
+          selected = c("BRCA", "LUAD", "SKCM")
         )
       ),
       mainPanel(

@@ -3,42 +3,42 @@ library(RPostgreSQL)
 library(tidyverse)
 library(tidyr)
 
-source('creds.r')
+source("creds.r")
 
 # Connect to DB
 db <- DBI::dbConnect(
-  dbDriver('PostgreSQL'), 
-  host=host,
-  port=port,
-  user=user,
-  password=password,
-  dbname=dbname
+  dbDriver("PostgreSQL"),
+  host = host,
+  port = port,
+  user = user,
+  password = password,
+  dbname = dbname
 )
 
 ###############
 # Entity tables
 
-gene <- tbl(db, 'gene')
-cohort <- tbl(db, 'cohort')
-patient <- tbl(db, 'patient') %>%
-  inner_join(cohort, by='cohort_id')
-tissue <- tbl(db, 'tissue')
-cell_type <- tbl(db, 'cell_type') %>%
-  inner_join(tissue, by='tissue_id')
-sample <- tbl(db, 'sample') %>%
-  inner_join(patient, by='patient_id')
+gene <- tbl(db, "gene")
+cohort <- tbl(db, "cohort")
+patient <- tbl(db, "patient") %>%
+  inner_join(cohort, by = "cohort_id")
+tissue <- tbl(db, "tissue")
+cell_type <- tbl(db, "cell_type") %>%
+  inner_join(tissue, by = "tissue_id")
+sample <- tbl(db, "sample") %>%
+  inner_join(patient, by = "patient_id")
 
 
 #############
 # Data tables
 
 data_tbls <- list(
-  patient_text_value = tbl(db, 'patient_text_value'),
-  patient_value = tbl(db, 'patient_value'),
-  sample_gene_value = tbl(db, 'sample_gene_value'),
-  sample_gene_text_value = tbl(db, 'sample_gene_text_value'),
-  tissue_gene_value = tbl(db, 'tissue_gene_value'),
-  cell_type_gene_text_value = tbl(db, 'cell_type_gene_text_value')
+  patient_text_value = tbl(db, "patient_text_value"),
+  patient_value = tbl(db, "patient_value"),
+  sample_gene_value = tbl(db, "sample_gene_value"),
+  sample_gene_text_value = tbl(db, "sample_gene_text_value"),
+  tissue_gene_value = tbl(db, "tissue_gene_value"),
+  cell_type_gene_text_value = tbl(db, "cell_type_gene_text_value")
 )
 
 
@@ -46,52 +46,52 @@ data_tbls <- list(
 # Derived tables
 
 patient_immune_subtype <- data_tbls$patient_text_value %>%
-  filter(data_type == 'Immune Subtype') %>%
-  inner_join(patient, by='patient_id') %>%
-  select(cohort_id, patient_id, immune_subtype=value)
+  filter(data_type == "Immune Subtype") %>%
+  inner_join(patient, by = "patient_id") %>%
+  select(cohort_id, patient_id, immune_subtype = value)
 
 patient_immune_composition <- data_tbls$patient_value %>%
-  filter(unit == 'fraction') %>%
-  inner_join(patient, by='patient_id') %>%
-  select(cohort_id, patient_id, component=data_type, fraction=value)
+  filter(unit == "fraction") %>%
+  inner_join(patient, by = "patient_id") %>%
+  select(cohort_id, patient_id, component = data_type, fraction = value)
 
 patient_signature_score <- data_tbls$patient_value %>%
-  filter(unit == 'signature score') %>%
-  inner_join(patient, by='patient_id') %>%
-  select(cohort_id, patient_id, signature=data_type, signature_score=value)
+  filter(unit == "signature score") %>%
+  inner_join(patient, by = "patient_id") %>%
+  select(cohort_id, patient_id, signature = data_type, signature_score = value)
 
 patient_clinical_text <- data_tbls$patient_text_value %>%
-  filter(unit == 'clinical') %>%
-  inner_join(patient, by='patient_id')
+  filter(unit == "clinical") %>%
+  inner_join(patient, by = "patient_id")
 
 patient_clinical_value <- data_tbls$patient_value %>%
-  filter(unit == 'clinical') %>%
-  inner_join(patient, by='patient_id')
+  filter(unit == "clinical") %>%
+  inner_join(patient, by = "patient_id")
 
 sample_expression <- data_tbls$sample_gene_value %>%
-  filter(data_type == 'expression') %>%
-  inner_join(gene, by='gene_id') %>%
-  inner_join(sample, by='sample_id') 
+  filter(data_type == "expression") %>%
+  inner_join(gene, by = "gene_id") %>%
+  inner_join(sample, by = "sample_id")
 
 sample_copy_number <- data_tbls$sample_gene_value %>%
-  filter(data_type == 'copy number') %>%
-  inner_join(gene, by='gene_id') %>%
-  inner_join(sample, by='sample_id') 
+  filter(data_type == "copy number") %>%
+  inner_join(gene, by = "gene_id") %>%
+  inner_join(sample, by = "sample_id")
 
 sample_mutation <- data_tbls$sample_gene_text_value %>%
-  filter(unit == 'mutation') %>%
-  inner_join(gene, by='gene_id') %>%
-  inner_join(sample, by='sample_id')
+  filter(unit == "mutation") %>%
+  inner_join(gene, by = "gene_id") %>%
+  inner_join(sample, by = "sample_id")
 
 tissue_expression <- data_tbls$tissue_gene_value %>%
-  filter(data_type == 'expression') %>%
-  inner_join(gene, by='gene_id') %>%
-  inner_join(tissue, by='tissue_id') 
+  filter(data_type == "expression") %>%
+  inner_join(gene, by = "gene_id") %>%
+  inner_join(tissue, by = "tissue_id")
 
 cell_type_protein <- data_tbls$cell_type_gene_text_value %>%
-  filter(data_type == 'protein') %>%
-  inner_join(gene, by='gene_id') %>%
-  inner_join(cell_type, by='cell_type_id')
+  filter(data_type == "protein") %>%
+  inner_join(gene, by = "gene_id") %>%
+  inner_join(cell_type, by = "cell_type_id")
 
 
 #######################
@@ -102,15 +102,16 @@ all_clinical_attributes <- function() {
     patient_clinical_value %>%
       dplyr::select(data_type) %>%
       dplyr::distinct() %>%
-      collect %>%
+      collect() %>%
       .$data_type %>%
       as.character(),
     patient_clinical_text %>%
       dplyr::select(data_type) %>%
       dplyr::distinct() %>%
-      collect %>%
+      collect() %>%
       .$data_type %>%
-      as.character())
+      as.character()
+  )
 }
 
 
@@ -118,7 +119,7 @@ all_components <- function() {
   patient_immune_composition %>%
     select(component) %>%
     distinct() %>%
-    collect %>%
+    collect() %>%
     .$component %>%
     as.character()
 }
@@ -127,7 +128,7 @@ all_signatures <- function() {
   patient_signature_score %>%
     select(signature) %>%
     distinct() %>%
-    collect %>%
+    collect() %>%
     .$signature %>%
     as.character()
 }
@@ -135,54 +136,65 @@ all_signatures <- function() {
 tcga_clinical_by_attr <- function(clinical_attr) {
   txt_clinical <- patient_clinical_text %>%
     filter(data_type == clinical_attr) %>%
-    collect
-  
+    collect()
+
   num_clinical <- patient_clinical_value %>%
     filter(data_type == clinical_attr) %>%
-    collect
-  
-  if(nrow(txt_clinical) > 0) 
+    collect()
+
+  if (nrow(txt_clinical) > 0) {
     txt_clinical %>%
       spread(data_type, value)
-  else
+  } else {
     num_clinical %>%
       spread(data_type, value)
-  
+  }
 }
 
-tcga_expr_by_gene <- function(gene) {
-  sample_expression %>%
-    filter(symbol %in% gene) %>%
-    collect %>%
+tcga_expr_by_gene <- function(gene, cohort = NULL) {
+  expr_by_gene <- sample_expression %>%
+    filter(symbol %in% gene)
+
+  if (is.null(cohort)) {
+    return_expr <- expr_by_gene
+  } else {
+    return_expr <- expr_by_gene %>%
+      filter(cohort_id %in% cohort)
+  }
+
+  return_expr %>%
+    collect() %>%
     spread(unit, value)
 }
 
 gtex_expr_by_gene <- function(gene) {
   tissue_expression %>%
-    filter(symbol %in% gene, source_id == 'GTEx') %>%
-    collect %>%
+    filter(symbol %in% gene, source_id == "GTEx") %>%
+    collect() %>%
     spread(unit, value)
 }
 
 hpa_expr_by_gene <- function(gene) {
   tissue_expression %>%
-    filter(symbol %in% gene, source_id == 'HPA') %>%
-    collect %>%
+    filter(symbol %in% gene, source_id == "HPA") %>%
+    collect() %>%
     spread(unit, value)
 }
 
 hpa_prot_by_gene <- function(gene) {
   cell_type_protein %>%
     filter(symbol %in% gene) %>%
-    collect %>%
+    collect() %>%
     spread(unit, value) %>%
     mutate(
       `detection level` = factor(`detection level`,
-                                 levels=c('Not detected', 'Low', 'Medium', 'High')))
+        levels = c("Not detected", "Low", "Medium", "High")
+      )
+    )
 }
 
 gtex_vs_hpa_by_gene <- function(gene) {
-  hpa <- hpa_expr_by_gene(gene) %>% 
+  hpa <- hpa_expr_by_gene(gene) %>%
     select(tissue, subtype, symbol, HPA = TPM)
   gtex_expr_by_gene(gene) %>%
     select(tissue, subtype, symbol, GTEx = median_tpm) %>%
@@ -200,19 +212,19 @@ hpa_prot_vs_expr_by_gene <- function(gene) {
 tcga_mut_by_gene <- function(gene) {
   sample_mutation %>%
     filter(symbol %in% gene) %>%
-    collect %>%
+    collect() %>%
     spread(data_type, value)
 }
 
 tcga_expr_immune_subtype_by_gene <- function(gene) {
   tcga_expr_by_gene(gene) %>%
-    inner_join(patient_immune_subtype %>% collect)
+    inner_join(patient_immune_subtype %>% collect())
 }
 
 tcga_expr_immune_composition_by_gene <- function(gene, comp) {
   df <- patient_immune_composition %>%
     filter(component %in% comp) %>%
-    collect
+    collect()
   tcga_expr_by_gene(gene) %>%
     inner_join(df)
 }
@@ -220,7 +232,7 @@ tcga_expr_immune_composition_by_gene <- function(gene, comp) {
 tcga_expr_signature_score_by_gene <- function(gene, sig) {
   scores <- patient_signature_score %>%
     filter(signature %in% sig) %>%
-    collect
+    collect()
   tcga_expr_by_gene(gene) %>%
     inner_join(scores)
 }
@@ -267,4 +279,3 @@ hpa_expr_pair_by_gene <- function(gene_x, gene_y) {
     select(-gene_id, -ensembl_id, -TPM)
   df_x %>% inner_join(df_y)
 }
-
