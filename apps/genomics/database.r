@@ -209,9 +209,18 @@ hpa_prot_vs_expr_by_gene <- function(gene) {
     inner_join(prot)
 }
 
-tcga_mut_by_gene <- function(gene) {
-  sample_mutation %>%
-    filter(symbol %in% gene) %>%
+tcga_mut_by_gene <- function(gene, cohort = NULL) {
+  mut_by_gene <- sample_mutation %>%
+    filter(symbol %in% gene)
+
+  if (is.null(cohort)) {
+    return_mut <- mut_by_gene
+  } else {
+    return_mut <- mut_by_gene %>%
+      filter(cohort_id %in% cohort)
+  }
+
+  return_mut %>%
     collect() %>%
     spread(data_type, value)
 }
