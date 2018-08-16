@@ -5,24 +5,24 @@ source("database.r")
 
 server <- function(input, output, session) {
   tcga_expr <- reactive(
-    tcga_expr_by_gene(input$gene_cancer, input$cohorts_cancer)
+    tcga_expr_by_gene(input$gene, input$cohorts_cancer)
   )
   tcga_mut <- reactive(
-    tcga_mut_by_gene(input$gene_cancer, input$cohorts_cancer)
+    tcga_mut_by_gene(input$gene, input$cohorts_cancer)
   )
   tcga_expr_immune_subtype <- reactive(
-    tcga_expr_immune_subtype_by_gene(input$gene_immune, input$cohort_immune)
+    tcga_expr_immune_subtype_by_gene(input$gene, input$cohort_immune)
   )
   tcga_expr_immune_composition <- reactive(
     tcga_expr_immune_composition_by_gene(
-      input$gene_immune,
+      input$gene,
       input$component,
       input$cohort_immune
     )
   )
   tcga_expr_signature_score <- reactive(
     tcga_expr_signature_score_by_gene(
-      input$gene_immune,
+      input$gene,
       input$signature,
       input$cohort_immune
     )
@@ -31,14 +31,14 @@ server <- function(input, output, session) {
   tcga_expr_clinical <- reactive(
     tcga_expr_by_clinical_attr(input$gene_y, input$clinical_attr)
   )
-  tcga_expr_pair <- reactive(tcga_expr_pair_by_gene(input$gene_x, input$gene_y))
-  gtex_expr <- reactive(gtex_expr_by_gene(input$gene_tissue))
-  gtex_expr_pair <- reactive(gtex_expr_pair_by_gene(input$gene_x, input$gene_y))
-  hpa_expr <- reactive(hpa_expr_by_gene(input$gene_tissue))
-  hpa_expr_pair <- reactive(hpa_expr_pair_by_gene(input$gene_x, input$gene_y))
-  hpa_prot <- reactive(hpa_prot_by_gene(input$gene_tissue))
-  gtex_vs_hpa <- reactive(gtex_vs_hpa_by_gene(input$gene_tissue))
-  hpa_prot_vs_expr <- reactive(hpa_prot_vs_expr_by_gene(input$gene_tissue))
+  tcga_expr_pair <- reactive(tcga_expr_pair_by_gene(input$gene, input$gene_y))
+  gtex_expr <- reactive(gtex_expr_by_gene(input$gene))
+  gtex_expr_pair <- reactive(gtex_expr_pair_by_gene(input$gene, input$gene_y))
+  hpa_expr <- reactive(hpa_expr_by_gene(input$gene))
+  hpa_expr_pair <- reactive(hpa_expr_pair_by_gene(input$gene, input$gene_y))
+  hpa_prot <- reactive(hpa_prot_by_gene(input$gene))
+  gtex_vs_hpa <- reactive(gtex_vs_hpa_by_gene(input$gene))
+  hpa_prot_vs_expr <- reactive(hpa_prot_vs_expr_by_gene(input$genee))
 
   output$tcga_expr <- renderPlot({
     tcga_expr() %>% plot_tcga_by_cohort()
@@ -87,7 +87,7 @@ server <- function(input, output, session) {
 
   output$tcga_expr_pair <- renderPlotly({
     tcga_expr_pair() %>%
-      plot_tcga_expr_pair(input$gene_x, input$gene_y) %>%
+      plot_tcga_expr_pair(input$gene, input$gene_y) %>%
       ggplotly()
   })
 
@@ -99,13 +99,13 @@ server <- function(input, output, session) {
 
   output$gtex_expr_pair <- renderPlotly({
     gtex_expr_pair() %>%
-      plot_gtex_expr_pair(input$gene_x, input$gene_y) %>%
+      plot_gtex_expr_pair(input$gene, input$gene_y) %>%
       ggplotly()
   })
 
   output$hpa_expr_pair <- renderPlotly({
     hpa_expr_pair() %>%
-      plot_hpa_expr_pair(input$gene_x, input$gene_y) %>%
+      plot_hpa_expr_pair(input$gene, input$gene_y) %>%
       ggplotly()
   })
 }
