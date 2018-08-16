@@ -8,6 +8,7 @@ install.packages(c(
   'magrittr',
   'pheatmap',
   'plotly',
+  'pool',
   'PKI',
   'RJSONIO',
   'RSQLite',
