@@ -1,5 +1,4 @@
 library(dbplyr)
-library(pool)
 library(RPostgreSQL)
 library(tidyverse)
 library(tidyr)
@@ -7,7 +6,7 @@ library(tidyr)
 source("creds.r")
 
 # Connect to DB
-pool <- dbPool(
+db <- DBI::dbConnect(
   dbDriver("PostgreSQL"),
   host = host,
   port = port,
@@ -15,21 +14,18 @@ pool <- dbPool(
   password = password,
   dbname = dbname
 )
-onStop(function() {
-  poolClose(pool)
-})
 
 ###############
 # Entity tables
 
-gene <- tbl(pool, "gene")
-cohort <- tbl(pool, "cohort")
-patient <- tbl(pool, "patient") %>%
+gene <- tbl(db, "gene")
+cohort <- tbl(db, "cohort")
+patient <- tbl(db, "patient") %>%
   inner_join(cohort, by = "cohort_id")
-tissue <- tbl(pool, "tissue")
-cell_type <- tbl(pool, "cell_type") %>%
+tissue <- tbl(db, "tissue")
+cell_type <- tbl(db, "cell_type") %>%
   inner_join(tissue, by = "tissue_id")
-sample <- tbl(pool, "sample") %>%
+sample <- tbl(db, "sample") %>%
   inner_join(patient, by = "patient_id")
 
 
@@ -37,12 +33,12 @@ sample <- tbl(pool, "sample") %>%
 # Data tables
 
 data_tbls <- list(
-  patient_text_value = tbl(pool, "patient_text_value"),
-  patient_value = tbl(pool, "patient_value"),
-  sample_gene_value = tbl(pool, "sample_gene_value"),
-  sample_gene_text_value = tbl(pool, "sample_gene_text_value"),
-  tissue_gene_value = tbl(pool, "tissue_gene_value"),
-  cell_type_gene_text_value = tbl(pool, "cell_type_gene_text_value")
+  patient_text_value = tbl(db, "patient_text_value"),
+  patient_value = tbl(db, "patient_value"),
+  sample_gene_value = tbl(db, "sample_gene_value"),
+  sample_gene_text_value = tbl(db, "sample_gene_text_value"),
+  tissue_gene_value = tbl(db, "tissue_gene_value"),
+  cell_type_gene_text_value = tbl(db, "cell_type_gene_text_value")
 )
 
 
