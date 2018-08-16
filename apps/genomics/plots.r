@@ -19,7 +19,7 @@ plot_tcga_expr_immune_subtype <- function(df) {
     df,
     aes(x = immune_subtype, y = log2(normalized_counts + 1))
   ) +
-    facet_grid(symbol ~ .) +
+    facet_grid(symbol ~ cohort_id, scales = "free_y") +
     geom_boxplot(fill = NA) +
     theme_bw() +
     theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0)) +
