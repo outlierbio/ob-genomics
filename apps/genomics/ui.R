@@ -79,6 +79,11 @@ ui <- fluidPage(
           selectize = FALSE
         ),
         selectizeInput(
+          inputId = "cohort_immune", label = "Select tumor type(s)",
+          choices = cohorts, selected = c("BRCA", "LUAD", "SKCM"),
+          multiple = TRUE
+        ),
+        selectizeInput(
           inputId = "component", label = "Select fractional component(s)",
           choices = all_components(),
           selected = c(
