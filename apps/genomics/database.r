@@ -250,21 +250,21 @@ tcga_expr_signature_score_by_gene <- function(gene, sig, cohort = NULL) {
     inner_join(scores)
 }
 
-tcga_expr_pair_by_gene <- function(gene_x, gene_y) {
-  df_x <- tcga_expr_by_gene(gene_x) %>%
+tcga_expr_pair_by_gene <- function(gene_x, gene_y, cohort = NULL) {
+  df_x <- tcga_expr_by_gene(gene_x, cohort) %>%
     mutate(log2_counts = log2(normalized_counts + 1)) %>%
     spread(symbol, log2_counts) %>%
     select(-gene_id, -ensembl_id, -normalized_counts)
-  df_y <- tcga_expr_by_gene(gene_y) %>%
+  df_y <- tcga_expr_by_gene(gene_y, cohort) %>%
     mutate(log2_counts = log2(normalized_counts + 1)) %>%
     spread(symbol, log2_counts) %>%
     select(-gene_id, -ensembl_id, -normalized_counts)
   df_x %>% inner_join(df_y)
 }
 
-tcga_expr_by_clinical_attr <- function(symbol, clinical_attr) {
+tcga_expr_by_clinical_attr <- function(symbol, clinical_attr, cohort = NULL) {
   tcga_clinical_by_attr(clinical_attr) %>%
-    inner_join(tcga_expr_by_gene(symbol)) %>%
+    inner_join(tcga_expr_by_gene(symbol, cohort)) %>%
     mutate(log2_counts = log2(normalized_counts + 1)) %>%
     spread(symbol, log2_counts)
 }

@@ -5,10 +5,10 @@ source("database.r")
 
 server <- function(input, output, session) {
   tcga_expr <- reactive(
-    tcga_expr_by_gene(input$gene, input$cohorts_cancer)
+    tcga_expr_by_gene(input$gene, input$cohort_cancer)
   )
   tcga_mut <- reactive(
-    tcga_mut_by_gene(input$gene, input$cohorts_cancer)
+    tcga_mut_by_gene(input$gene, input$cohort_cancer)
   )
   tcga_expr_immune_subtype <- reactive(
     tcga_expr_immune_subtype_by_gene(input$gene, input$cohort_immune)
@@ -29,9 +29,15 @@ server <- function(input, output, session) {
   )
   tcga_clinical <- reactive(tcga_clinical_by_attr(input$clinical_attr))
   tcga_expr_clinical <- reactive(
-    tcga_expr_by_clinical_attr(input$gene_y, input$clinical_attr)
+    tcga_expr_by_clinical_attr(
+      input$gene_y,
+      input$clinical_attr,
+      input$cohort_correlation
+    )
   )
-  tcga_expr_pair <- reactive(tcga_expr_pair_by_gene(input$gene, input$gene_y))
+  tcga_expr_pair <- reactive(
+    tcga_expr_pair_by_gene(input$gene, input$gene_y, input$cohort_correlation)
+  )
   gtex_expr <- reactive(gtex_expr_by_gene(input$gene))
   gtex_expr_pair <- reactive(gtex_expr_pair_by_gene(input$gene, input$gene_y))
   hpa_expr <- reactive(hpa_expr_by_gene(input$gene))
