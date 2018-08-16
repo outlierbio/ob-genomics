@@ -53,7 +53,7 @@ ui <- fluidPage(
           "Cancer",
           sidebarPanel(
             selectizeInput(
-              inputId = "cohorts_cancer", label = "Select tumor type(s)",
+              inputId = "cohort_cancer", label = "Select tumor type(s)",
               choices = cohorts, multiple = TRUE,
               selected = c("BRCA", "LUAD", "SKCM")
             )
@@ -116,6 +116,11 @@ ui <- fluidPage(
               selected = "MYC",
               multiple = FALSE,
               selectize = FALSE
+            ),
+            selectizeInput(
+              inputId = "cohort_correlation", label = "Select tumor type(s)",
+              choices = cohorts, selected = c("BRCA", "LUAD", "SKCM"),
+              multiple = TRUE
             ),
             selectInput(
               inputId = "clinical_attr",
