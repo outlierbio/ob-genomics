@@ -11,13 +11,21 @@ server <- function(input, output, session) {
     tcga_mut_by_gene(input$gene_cancer, input$cohorts_cancer)
   )
   tcga_expr_immune_subtype <- reactive(
-    tcga_expr_immune_subtype_by_gene(input$gene_immune)
+    tcga_expr_immune_subtype_by_gene(input$gene_immune, input$cohort_immune)
   )
   tcga_expr_immune_composition <- reactive(
-    tcga_expr_immune_composition_by_gene(input$gene_immune, input$component)
+    tcga_expr_immune_composition_by_gene(
+      input$gene_immune,
+      input$component,
+      input$cohort_immune
+    )
   )
   tcga_expr_signature_score <- reactive(
-    tcga_expr_signature_score_by_gene(input$gene_immune, input$signature)
+    tcga_expr_signature_score_by_gene(
+      input$gene_immune,
+      input$signature,
+      input$cohort_immune
+    )
   )
   tcga_clinical <- reactive(tcga_clinical_by_attr(input$clinical_attr))
   tcga_expr_clinical <- reactive(

@@ -225,24 +225,24 @@ tcga_mut_by_gene <- function(gene, cohort = NULL) {
     spread(data_type, value)
 }
 
-tcga_expr_immune_subtype_by_gene <- function(gene) {
-  tcga_expr_by_gene(gene) %>%
+tcga_expr_immune_subtype_by_gene <- function(gene, cohort = NULL) {
+  tcga_expr_by_gene(gene, cohort) %>%
     inner_join(patient_immune_subtype %>% collect())
 }
 
-tcga_expr_immune_composition_by_gene <- function(gene, comp) {
+tcga_expr_immune_composition_by_gene <- function(gene, comp, cohort = NULL) {
   df <- patient_immune_composition %>%
     filter(component %in% comp) %>%
     collect()
-  tcga_expr_by_gene(gene) %>%
+  tcga_expr_by_gene(gene, cohort) %>%
     inner_join(df)
 }
 
-tcga_expr_signature_score_by_gene <- function(gene, sig) {
+tcga_expr_signature_score_by_gene <- function(gene, sig, cohort = NULL) {
   scores <- patient_signature_score %>%
     filter(signature %in% sig) %>%
     collect()
-  tcga_expr_by_gene(gene) %>%
+  tcga_expr_by_gene(gene, cohort) %>%
     inner_join(scores)
 }
 
