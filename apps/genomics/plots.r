@@ -136,12 +136,13 @@ plot_tcga_expr_pair <- function(df, gene_x, gene_y) {
     geom_point(aes(text = paste0(cohort_id, ": ", sample_id)), alpha = 0.5) +
     theme_bw() +
     theme(
-      axis.text.x = element_text(angle = 90, hjust = 1, vjust = 1),
-      legend.position = "none"
+      axis.text.x = element_text(angle = 90, hjust = 1, vjust = 1)
     ) +
     labs(
       x = paste0(gene_x, " log2(normalized counts)"),
-      y = paste0(gene_y, " log2(normalized counts)")
+      y = paste0(gene_y, " log2(normalized counts)"),
+      color = "",
+      shape = ""
     )
 }
 
@@ -153,17 +154,19 @@ plot_tcga_expr_by_clinical <- function(df, gene, clinical_attr) {
         alpha = 0.5,
         position = position_jitter(width = 0.1, height = 0)
       )
+    legend_position <- "none"
   } else {
     p <- p + geom_point(
       aes(text = paste0(cohort_id, ": ", patient_id)),
       alpha = 0.5
     )
+    legend_position <- "right"
   }
 
   p + theme_bw() +
     theme(
       axis.text.x = element_text(angle = 90, hjust = 1, vjust = 1),
-      legend.position = "none"
+      legend.position = legend_position
     ) +
     labs(
       x = clinical_attr,
