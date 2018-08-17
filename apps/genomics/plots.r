@@ -100,7 +100,7 @@ plot_hpa_by_cell_type <- function(df) {
 plot_gtex_vs_hpa <- function(df) {
   ggplot(df, aes(x = log2(GTEx + 1), y = log2(HPA + 1), color = tissue)) +
     facet_wrap(~symbol, scales = "free") +
-    geom_point(aes(text = paste0(tissue, " - ", subtype))) +
+    geom_jitter(aes(text = paste0(tissue, " - ", subtype))) +
     theme_bw() +
     theme(
       axis.text.x = element_text(angle = 90, hjust = 1, vjust = 1),
@@ -116,7 +116,9 @@ plot_gtex_vs_hpa <- function(df) {
 plot_hpa_prot_vs_expr <- function(df) {
   ggplot(df, aes(x = `detection level`, y = log2(TPM + 1), color = tissue)) +
     facet_wrap(~symbol, scales = "free") +
-    geom_point(aes(text = paste0(tissue, " - ", subtype))) +
+    geom_jitter(
+      aes(text = paste0(tissue, " - ", subtype)),
+      position=position_jitter(width=0.2, height=0)) +
     theme_bw() +
     theme(
       axis.text.x = element_text(angle = 90, hjust = 1, vjust = 1),
@@ -131,7 +133,7 @@ plot_hpa_prot_vs_expr <- function(df) {
 plot_tcga_expr_pair <- function(df, gene_x, gene_y) {
   ggplot(
     df,
-    aes(x = get(gene_x), y = (gene_y), color = cohort_id, shape = sample_type)
+    aes(x = get(gene_x), y = get(gene_y), color = cohort_id, shape = sample_type)
   ) +
     geom_point(aes(text = paste0(cohort_id, ": ", sample_id)), alpha = 0.5) +
     theme_bw() +

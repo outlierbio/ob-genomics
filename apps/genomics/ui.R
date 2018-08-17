@@ -18,6 +18,7 @@ cohorts <- cohort %>%
   select(cohort_id) %>%
   arrange(cohort_id) %>%
   collect() %>%
+  filter(!(cohort_id %in% c('CNTL', 'FPPP', 'LCML', 'MISC'))) %>%
   .$cohort_id
 
 clinical_attributes <- all_clinical_attributes()
@@ -31,6 +32,11 @@ ui <- fluidPage(
         choices = genes, selected = "KRAS",
         multiple = FALSE
       ),
+      selectizeInput(
+        inputId = "cohort", label = "Select tumor type(s)",
+        choices = cohorts, multiple = TRUE,
+        selected = c("LUAD", "PAAD", "STAD")
+      ),
       width = 2
     ),
     mainPanel(
@@ -38,26 +44,7 @@ ui <- fluidPage(
         type = "tabs",
 
         tabPanel(
-          "Tissue",
-          h2("GTEx expression by tissue"),
-          plotOutput("gtex_expr", height = 400),
-          h2("HPA expression by cell type"),
-          plotOutput("hpa_prot", height = 400),
-          h2("GTEx vs HPA mRNA expression"),
-          plotlyOutput("gtex_vs_hpa", height = 400),
-          h2("HPA protein vs mRNA expression"),
-          plotlyOutput("hpa_prot_vs_expr", height = 400)
-        ),
-
-        tabPanel(
           "Cancer",
-          sidebarPanel(
-            selectizeInput(
-              inputId = "cohort_cancer", label = "Select tumor type(s)",
-              choices = cohorts, multiple = TRUE,
-              selected = c("BRCA", "LUAD", "SKCM")
-            )
-          ),
           mainPanel(
             h2("TCGA expression by cohort"),
             plotOutput("tcga_expr", height = 400),
@@ -69,11 +56,6 @@ ui <- fluidPage(
         tabPanel(
           "Immuno-oncology",
           sidebarPanel(
-            selectizeInput(
-              inputId = "cohort_immune", label = "Select tumor type(s)",
-              choices = cohorts, selected = c("BRCA", "LUAD", "SKCM"),
-              multiple = TRUE
-            ),
             selectizeInput(
               inputId = "component", label = "Select fractional component(s)",
               choices = all_components(),
@@ -117,11 +99,6 @@ ui <- fluidPage(
               multiple = FALSE,
               selectize = FALSE
             ),
-            selectizeInput(
-              inputId = "cohort_correlation", label = "Select tumor type(s)",
-              choices = cohorts, selected = c("BRCA", "LUAD", "SKCM"),
-              multiple = TRUE
-            ),
             selectInput(
               inputId = "clinical_attr",
               label = "Select clinical attribute (x-axis)",
@@ -141,7 +118,20 @@ ui <- fluidPage(
             h2("HPA expression correlations"),
             plotlyOutput("hpa_expr_pair", height = 400)
           )
+        ),
+        
+        tabPanel(
+          "Tissue",
+          h2("GTEx expression by tissue"),
+          plotOutput("gtex_expr", height = 400),
+          h2("HPA expression by cell type"),
+          plotOutput("hpa_prot", height = 400),
+          h2("GTEx vs HPA mRNA expression"),
+          plotlyOutput("gtex_vs_hpa", height = 400),
+          h2("HPA protein vs mRNA expression"),
+          plotlyOutput("hpa_prot_vs_expr", height = 400)
         )
+        
       )
     )
   )
