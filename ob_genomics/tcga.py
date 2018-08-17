@@ -98,6 +98,11 @@ gdac_params = {
         'run_type': 'stddata',
         'suffix': 'rsem_normalized.csv'
     },
+    'isoforms': {
+        'data_type': 'Merge_rnaseqv2__illuminahiseq_rnaseqv2__unc_edu__Level_3__RSEM_isoforms_normalized__data.Level_3',
+        'run_type': 'stddata',
+        'suffix': 'rsem_normalized.csv'
+    },
     'copy number': {
         'data_type': 'CopyNumber_Gistic2.Level_4',
         'run_type': 'analyses',
@@ -268,6 +273,30 @@ def load_tcga_profile(data_type, fpath):
         raise ValueError("Data type not recognized")
 
     db.load_sample_gene_values(fpath, data_type, cols, unit)
+
+
+def parse_tcga_isoform(fpath):
+    mat = pd.read_csv(fpath, sep='\t', skiprows=2, header=None)
+    header = pd.read_csv(fpath, sep='\t', nrows=0)
+    df = (
+        mat
+        .rename(columns={'Hybridization REF': 'transcript_id'})
+        .melt(
+            id_vars=['transcript_id'],
+            var_name='barcode',
+            value_name='rsem_normalized')
+    )
+    return df
+
+
+def load_tcga_isoform(df):
+    df['sample_id'] = df['barcode'].map(lambda s: s[1:15])
+    df['data_type'] = 'isoform'
+    df['unit'] = 'normalized_counts'
+    df = df[['sample_id', 'transcript_id', 'data_type', 'unit', 'value']]
+    df = df.drop_duplicates(subset=['sample_id', 'transcript_id', 'data_type'])
+
+    copy_from_df(df, 'sample_gene_value')
 
 
 def load_tcga_clinical(fpath):
