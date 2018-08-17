@@ -5,26 +5,26 @@ source("database.r")
 
 server <- function(input, output, session) {
   tcga_expr <- reactive(
-    tcga_expr_by_gene(input$gene, input$cohort_cancer)
+    tcga_expr_by_gene(input$gene, input$cohort)
   )
   tcga_mut <- reactive(
-    tcga_mut_by_gene(input$gene, input$cohort_cancer)
+    tcga_mut_by_gene(input$gene, input$cohort)
   )
   tcga_expr_immune_subtype <- reactive(
-    tcga_expr_immune_subtype_by_gene(input$gene, input$cohort_immune)
+    tcga_expr_immune_subtype_by_gene(input$gene, input$cohort)
   )
   tcga_expr_immune_composition <- reactive(
     tcga_expr_immune_composition_by_gene(
       input$gene,
       input$component,
-      input$cohort_immune
+      input$cohort
     )
   )
   tcga_expr_signature_score <- reactive(
     tcga_expr_signature_score_by_gene(
       input$gene,
       input$signature,
-      input$cohort_immune
+      input$cohort
     )
   )
   tcga_clinical <- reactive(tcga_clinical_by_attr(input$clinical_attr))
@@ -32,11 +32,11 @@ server <- function(input, output, session) {
     tcga_expr_by_clinical_attr(
       input$gene_y,
       input$clinical_attr,
-      input$cohort_correlation
+      input$cohort
     )
   )
   tcga_expr_pair <- reactive(
-    tcga_expr_pair_by_gene(input$gene, input$gene_y, input$cohort_correlation)
+    tcga_expr_pair_by_gene(input$gene, input$gene_y, input$cohort)
   )
   gtex_expr <- reactive(gtex_expr_by_gene(input$gene))
   gtex_expr_pair <- reactive(gtex_expr_pair_by_gene(input$gene, input$gene_y))
@@ -44,7 +44,7 @@ server <- function(input, output, session) {
   hpa_expr_pair <- reactive(hpa_expr_pair_by_gene(input$gene, input$gene_y))
   hpa_prot <- reactive(hpa_prot_by_gene(input$gene))
   gtex_vs_hpa <- reactive(gtex_vs_hpa_by_gene(input$gene))
-  hpa_prot_vs_expr <- reactive(hpa_prot_vs_expr_by_gene(input$genee))
+  hpa_prot_vs_expr <- reactive(hpa_prot_vs_expr_by_gene(input$gene))
 
   output$tcga_expr <- renderPlot({
     tcga_expr() %>% plot_tcga_by_cohort()
@@ -57,13 +57,15 @@ server <- function(input, output, session) {
   output$gtex_vs_hpa <- renderPlotly({
     gtex_vs_hpa() %>%
       plot_gtex_vs_hpa() %>%
-      ggplotly()
+      ggplotly() %>%
+      layout(margin = list(b=100, l=100))
   })
 
   output$hpa_prot_vs_expr <- renderPlotly({
     hpa_prot_vs_expr() %>%
       plot_hpa_prot_vs_expr() %>%
-      ggplotly()
+      ggplotly() %>%
+      layout(margin = list(b=100, l=100))
   })
 
   output$hpa_prot <- renderPlot({
