@@ -8,3 +8,5 @@ deploy.r
 config.yml
 creds.r
 logs
+*.pyc
+db_backup

@@ -18,7 +18,7 @@ class Gene(base):
     __tablename__ = 'gene'
     gene_id = Column(Integer, primary_key=True)
     ensembl_id = Column(String)
-    symbol = Column(String)
+    symbol = Column(String, index=True)
 
 
 class Source(base):
