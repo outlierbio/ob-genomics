@@ -101,7 +101,7 @@ gdac_params = {
     'isoforms': {
         'data_type': 'Merge_rnaseqv2__illuminahiseq_rnaseqv2__unc_edu__Level_3__RSEM_isoforms_normalized__data.Level_3',
         'run_type': 'stddata',
-        'suffix': 'rsem_normalized.csv'
+        'suffix': 'isoform.csv'
     },
     'copy number': {
         'data_type': 'CopyNumber_Gistic2.Level_4',
@@ -275,28 +275,38 @@ def load_tcga_profile(data_type, fpath):
     db.load_sample_gene_values(fpath, data_type, cols, unit)
 
 
-def parse_tcga_isoform(fpath):
+def parse_tcga_isoforms(fpath):
     mat = pd.read_csv(fpath, sep='\t', skiprows=2, header=None)
     header = pd.read_csv(fpath, sep='\t', nrows=0)
+    mat.columns = header.columns
+
     df = (
         mat
         .rename(columns={'Hybridization REF': 'transcript_id'})
         .melt(
             id_vars=['transcript_id'],
             var_name='barcode',
-            value_name='rsem_normalized')
+            value_name='value')
     )
     return df
 
 
-def load_tcga_isoform(df):
-    df['sample_id'] = df['barcode'].map(lambda s: s[1:15])
-    df['data_type'] = 'isoform'
+def load_tcga_isoforms(fpath, env=cfg['ENV']):
+    df = (
+        pd.read_csv(fpath)
+        .rename(columns={
+            'transcript_id': 'isoform_id',
+            'rsem_normalized': 'value'})
+    )
+    df['sample_id'] = df['barcode'].map(lambda s: s[:15])
     df['unit'] = 'normalized_counts'
-    df = df[['sample_id', 'transcript_id', 'data_type', 'unit', 'value']]
-    df = df.drop_duplicates(subset=['sample_id', 'transcript_id', 'data_type'])
+    df = df[['sample_id', 'isoform_id', 'unit', 'value']]
+    df = df.drop_duplicates(subset=['sample_id', 'isoform_id'])
 
-    copy_from_df(df, 'sample_gene_value')
+    if env == 'dev':
+        df = df[df['isoform_id'].isin(cfg['TEST_ISOFORMS'])]
+
+    db.copy_from_df(df, 'sample_isoform_value')
 
 
 def load_tcga_clinical(fpath):
@@ -342,9 +352,20 @@ def load_tcga_mutation(fpath, env=cfg['ENV']):
                 'AAChange',
             ]
         ]
+    elif 'amino_acid_change':
+        df = maf[
+            [
+                'Entrez_Gene_Id',
+                'Tumor_Sample_Barcode',
+                'Variant_Classification',
+                'Variant_Type',
+                'amino_acid_change',
+            ]
+        ]
     else:
         raise Exception(
-            'MAF file should have either Protein_Change or AAChange column'
+            'MAF file should have either "Protein_Change", "AAChange", '
+            'or "amino_acid_change" column'
         )
     df['sample_id'] = df['Tumor_Sample_Barcode'].map(lambda s: s[:15])
     df = df.drop('Tumor_Sample_Barcode', axis=1)

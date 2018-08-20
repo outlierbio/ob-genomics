@@ -162,6 +162,22 @@ class LoadTCGAProfile(Task):
         return DatabaseTarget('sample_gene_value', update_id)
 
 
+class LoadTCGAIsoforms(Task):
+
+    cohort = Parameter()
+
+    def requires(self):
+        return BuildGDACTable(data_type='isoforms', cohort=self.cohort)
+
+    def run(self):
+        tcga.load_tcga_isoforms(self.input().path)
+        self.output().touch()
+
+    def output(self):
+        update_id = f'TCGA {self.cohort} isoforms'
+        return DatabaseTarget('sample_isoform_value', update_id)
+
+
 class LoadTCGA(Task):
     def requires(self):
         if cfg['ENV'] == 'dev':
@@ -176,6 +192,7 @@ class LoadTCGA(Task):
             yield LoadTCGAMutation(cohort=cohort)
             yield LoadTCGAProfile(data_type='copy number', cohort=cohort)
             yield LoadTCGAProfile(data_type='expression', cohort=cohort)
+            yield LoadTCGAIsoforms(cohort=cohort)
 
 
 class LoadGTEx(Task):

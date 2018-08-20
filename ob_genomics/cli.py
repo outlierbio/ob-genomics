@@ -25,6 +25,9 @@ def meta():
     print('Loading genes')
     database.load_genes()
 
+    print('Loading isoforms')
+    database.load_isoforms()
+
     print('Loading tissues')
     database.load_tissues()
 

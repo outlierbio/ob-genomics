@@ -21,6 +21,13 @@ class Gene(base):
     symbol = Column(String, index=True)
 
 
+class Isoform(base):
+    __tablename__ = 'isoform'
+    isoform_id = Column(String, primary_key=True)
+    gene_id = Column(Integer, ForeignKey('gene.gene_id'))
+    source = Column(String)
+
+
 class Source(base):
     __tablename__ = 'source'
     source_id = Column(String, primary_key=True)
@@ -107,6 +114,16 @@ class SampleGeneTextValue(base):
                        primary_key=True)
     gene_id = Column(Integer, ForeignKey('gene.gene_id'), primary_key=True)
     data_type = Column(String, primary_key=True)
+    unit = Column(String)
+    value = Column(String, nullable=False)
+
+
+class SampleIsoformValue(base):
+    __tablename__ = 'sample_isoform_value'
+    sample_id = Column(String, ForeignKey('sample.sample_id'),
+                       primary_key=True)
+    isoform_id = Column(String, ForeignKey('isoform.isoform_id'),
+                        primary_key=True)
     unit = Column(String)
     value = Column(String, nullable=False)
 

@@ -12,6 +12,7 @@ DATABASE_URI = cfg['DATABASE_URI']
 REFERENCE = cfg['REFERENCE']
 GENE = op.join(REFERENCE, 'ncbi', 'genes.hs.csv')
 GENE_HISTORY = op.join(REFERENCE, 'ncbi', 'gene_history.hs.tsv')
+TX_TO_GENE_FPATH = cfg['REFERENCE'] + '/tcga/rnaseqv2/unc_knownToLocus.txt'
 TISSUE = op.join(REFERENCE, 'tissue', 'tissue.csv')
 CELL_TYPE = op.join(REFERENCE, 'tissue', 'cell_type.csv')
 TEST_GENES = [3845, 7157, 4609, 2597]
@@ -86,6 +87,19 @@ def load_genes(gene_info_fpath=GENE, gene_history_fpath=GENE_HISTORY):
     ]).drop_duplicates(subset=['gene_id'])
 
     copy_from_df(df, 'gene')
+
+
+def load_isoforms(fpath=TX_TO_GENE_FPATH):
+    df = pd.read_csv(TX_TO_GENE_FPATH, sep='\t', header=None)
+    df.columns = ['mapping', 'isoform_id']
+
+    df['symbol'] = df['mapping'].map(
+        lambda s: s.split('|')[0] if '|' in s else None)
+    df['gene_id'] = df['mapping'].map(
+        lambda s: s.split('|')[1] if '|' in s else '\\N')
+    df['source'] = 'UCSC knownGene'
+
+    copy_from_df(df[['isoform_id', 'gene_id', 'source']], 'isoform')
 
 
 def load_tissues(fpath=TISSUE):
