@@ -14,6 +14,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
 
     install_requires=[
+        'alembic',
         'boto3',
         'click',
         'luigi',
