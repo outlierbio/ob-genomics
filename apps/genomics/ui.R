@@ -7,20 +7,6 @@ library(tidyverse)
 source("database.r")
 source("plots.r")
 
-genes <- gene %>%
-  filter(ensembl_id != "") %>%
-  select(symbol) %>%
-  arrange(symbol) %>%
-  collect() %>%
-  .$symbol
-
-cohorts <- cohort %>%
-  select(cohort_id) %>%
-  arrange(cohort_id) %>%
-  collect() %>%
-  filter(!(cohort_id %in% c('CNTL', 'FPPP', 'LCML', 'MISC'))) %>%
-  .$cohort_id
-
 clinical_attributes <- all_clinical_attributes()
 
 ui <- fluidPage(
@@ -47,9 +33,12 @@ ui <- fluidPage(
           "Cancer",
           mainPanel(
             h2("TCGA expression by cohort"),
-            plotOutput("tcga_expr", height = 400),
+            plotOutput("tcga_expr"),
+            h2("TCGA isoforms by cohort"),
+            plotOutput("tcga_isoform"),
             h2("TCGA mutations by cohort"),
-            plotOutput("tcga_mut", height = 400)
+            plotOutput("tcga_mut"),
+            dataTableOutput("mutation_table")
           )
         ),
 
@@ -124,6 +113,8 @@ ui <- fluidPage(
           "Tissue",
           h2("GTEx expression by tissue"),
           plotOutput("gtex_expr", height = 400),
+          h2("GTEx isoform by tissue"),
+          #plotOutput("gtex_isoform", height=600),
           h2("HPA expression by cell type"),
           plotOutput("hpa_prot", height = 400),
           h2("GTEx vs HPA mRNA expression"),

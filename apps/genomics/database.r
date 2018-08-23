@@ -19,6 +19,8 @@ db <- DBI::dbConnect(
 # Entity tables
 
 gene <- tbl(db, "gene")
+isoform <- tbl(db, "isoform") %>%
+  inner_join(gene, by="gene_id")
 cohort <- tbl(db, "cohort")
 patient <- tbl(db, "patient") %>%
   inner_join(cohort, by = "cohort_id")
@@ -27,6 +29,21 @@ cell_type <- tbl(db, "cell_type") %>%
   inner_join(tissue, by = "tissue_id")
 sample <- tbl(db, "sample") %>%
   inner_join(patient, by = "patient_id")
+
+# Entity ID lists (for UI dropdown)
+genes <- gene %>%
+  filter(ensembl_id != "") %>%
+  select(symbol) %>%
+  arrange(symbol) %>%
+  collect() %>%
+  .$symbol
+
+cohorts <- cohort %>%
+  select(cohort_id) %>%
+  arrange(cohort_id) %>%
+  collect() %>%
+  filter(!(cohort_id %in% c('CNTL', 'FPPP', 'LCML', 'MISC'))) %>%
+  .$cohort_id
 
 
 #############
@@ -37,7 +54,9 @@ data_tbls <- list(
   patient_value = tbl(db, "patient_value"),
   sample_gene_value = tbl(db, "sample_gene_value"),
   sample_gene_text_value = tbl(db, "sample_gene_text_value"),
+  sample_isoform_value = tbl(db, "sample_isoform_value"),
   tissue_gene_value = tbl(db, "tissue_gene_value"),
+  #tissue_isoform_value = tbl(db, "tissue_isoform_value"),
   cell_type_gene_text_value = tbl(db, "cell_type_gene_text_value")
 )
 
@@ -83,10 +102,18 @@ sample_mutation <- data_tbls$sample_gene_text_value %>%
   inner_join(gene, by = "gene_id") %>%
   inner_join(sample, by = "sample_id")
 
+sample_isoform <- data_tbls$sample_isoform_value %>%
+  inner_join(isoform, by = "isoform_id") %>%
+  inner_join(sample, by = "sample_id")
+
 tissue_expression <- data_tbls$tissue_gene_value %>%
   filter(data_type == "expression") %>%
   inner_join(gene, by = "gene_id") %>%
   inner_join(tissue, by = "tissue_id")
+# 
+# tissue_isoform <- data_tbls$tissue_isoform_value %>%
+#   inner_join(isoform, by = "isoform_id") %>%
+#   inner_join(tissue, by = "tissue_id")
 
 cell_type_protein <- data_tbls$cell_type_gene_text_value %>%
   filter(data_type == "protein") %>%
@@ -167,9 +194,32 @@ tcga_expr_by_gene <- function(gene, cohort = NULL) {
     spread(unit, value)
 }
 
+tcga_isoform_by_gene <- function(gene, cohort = NULL) {
+  isoform_by_gene <- sample_isoform %>%
+    filter(symbol %in% gene)
+  
+  if (is.null(cohort)) {
+    return_expr <- isoform_by_gene
+  } else {
+    return_expr <- isoform_by_gene %>%
+      filter(cohort_id %in% cohort)
+  }
+  
+  return_expr %>%
+    collect() %>%
+    spread(unit, value)
+}
+
 gtex_expr_by_gene <- function(gene) {
   tissue_expression %>%
     filter(symbol %in% gene, source_id == "GTEx") %>%
+    collect() %>%
+    spread(unit, value)
+}
+
+gtex_isoform_by_gene <- function(gene) {
+  tissue_isoform %>%
+    filter(symbol %in% gene) %>%
     collect() %>%
     spread(unit, value)
 }
