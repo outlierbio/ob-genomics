@@ -16,10 +16,15 @@ TCIA_GSEA_DEPLETION = op.join(REFERENCE, 'tcga', 'tcia',
                               'TCIA_GSEA_depletion.tsv')
 TCIA_GSEA_ENRICHMENT = op.join(REFERENCE, 'tcga', 'tcia',
                                'TCIA_GSEA_enrichment.tsv')
-TCGA_SAMPLE_META = op.join(REFERENCE, 'tcga', 'sample_meta', 'sample.csv')
-TCGA_PATIENT_META = op.join(REFERENCE, 'tcga', 'sample_meta', 'patient.csv')
+TCGA_SAMPLE_META = op.join(REFERENCE, 'tcga', 'sample_meta', 'sample.combined.2.csv')
+TCGA_PATIENT_META = op.join(REFERENCE, 'tcga', 'sample_meta', 'patient.combined2.csv')
 TCGA_COHORT_META = op.join(REFERENCE, 'tcga', 'sample_meta', 'cohort.csv')
 TCGA_SAMPLE_CODE = op.join(REFERENCE, 'tcga', 'sample_code.csv')
+
+# Curated mutations downloaded from GDC pan-cancer atlas
+# https://gdc.cancer.gov/about-data/publications/pancanatlas
+TCGA_MUTATIONS = op.join(REFERENCE, 'tcga', 'pancan', 'mc3.v0.2.8.PUBLIC.maf')
+
 GDAC_LATEST = '2016_07_15'
 TEST_GENES = [3845, 7157, 4609, 2597]
 IMMUNE_LANDSCAPE_UNITS = {
@@ -184,7 +189,7 @@ def load_immune_landscape(fpath=IMMUNE_LANDSCAPE):
         .melt(id_vars='patient_id', var_name='data_type', value_name='value')
     )
 
-    df["unit"] = df["data_type"].map(lambda dt: IMMUNE_LANDSCAPE_UNITS[dt])
+    df.loc[:, "unit"] = df["data_type"].map(lambda dt: IMMUNE_LANDSCAPE_UNITS[dt])
 
     # Split into numeric values and text values
     df['is_numeric'] = df['value'].map(is_numeric)
@@ -212,26 +217,58 @@ def load_tcia_patient(fpath=TCIA_PATIENT):
         .drop(['datasource', 'disease'], axis=1)
         .melt(id_vars='barcode', var_name='data_type', value_name='value')
         .rename(columns={'barcode': 'patient_id'}))
-    df['data_type'] = df['data_type'].str.replace('clinical_data_', '')
-    df['unit'] = 'clinical'
+    df.loc[:, 'data_type'] = df['data_type'].str.replace('clinical_data_', '')
+    df.loc[:, 'unit'] = 'clinical'
 
     # Split into numeric values and text values
-    df['is_numeric'] = df['value'].map(is_numeric)
+    df.loc[:, 'is_numeric'] = df['value'].map(is_numeric)
     df_numeric = df[df['is_numeric']]
-    df_numeric['value'] = df_numeric['value'].map(float)
+    df_numeric.loc[:, 'value'] = df_numeric['value'].map(float)
     df_text = df[~df['is_numeric']]
 
     # Load to database in respective tables
+    df_numeric = (
+        df_numeric[['patient_id', 'data_type', 'unit', 'value']]
+        .drop_duplicates(subset=['patient_id', 'data_type'])
+        .dropna(subset=['value']))
+    df_text = (
+        df_text[['patient_id', 'data_type', 'unit', 'value']]
+        .drop_duplicates(subset=['patient_id', 'data_type'])
+        .dropna(subset=['value']))
+
     conn = db.engine.connect()
-    (df_numeric[['patient_id', 'data_type', 'unit', 'value']]
-        .drop_duplicates(subset=['patient_id', 'data_type'])
-        .dropna(subset=['value'])
-        .to_sql('patient_value', conn, if_exists='append', index=False))
-    (df_text[['patient_id', 'data_type', 'unit', 'value']]
-        .drop_duplicates(subset=['patient_id', 'data_type'])
-        .dropna(subset=['value'])
-        .to_sql('patient_text_value', conn, if_exists='append', index=False))
-    conn.close()
+    try:
+        conn.execute('''
+            CREATE TABLE tmp_tcia_patient_text
+            (patient_id varchar, data_type varchar,
+             unit varchar, value varchar)
+        ''')
+        db.copy_from_df(df_text, 'tmp_tcia_patient_text')
+        conn.execute('''
+            INSERT INTO patient_text_value
+            (patient_id, data_type, unit, value)
+            SELECT tmp.patient_id, tmp.data_type, tmp.unit, tmp.value
+            FROM tmp_tcia_patient_text tmp
+            ON CONFLICT DO NOTHING
+        ''')
+
+        conn.execute('''
+            CREATE TABLE tmp_tcia_patient_num
+            (patient_id varchar, data_type varchar,
+             unit varchar, value numeric)
+        ''')
+        db.copy_from_df(df_numeric, 'tmp_tcia_patient_num')
+        conn.execute('''
+            INSERT INTO patient_value
+            (patient_id, data_type, unit, value)
+            SELECT tmp.patient_id, tmp.data_type, tmp.unit, tmp.value
+            FROM tmp_tcia_patient_num tmp
+            ON CONFLICT DO NOTHING
+        ''')
+    finally:
+        conn.execute('DROP TABLE tmp_tcia_patient_text')
+        conn.execute('DROP TABLE tmp_tcia_patient_num')
+        conn.close()
 
 
 def load_tcia_pathways(up_fpath=TCIA_GSEA_ENRICHMENT,
@@ -330,60 +367,83 @@ def load_tcga_clinical(fpath):
     db.copy_from_df(df_text, 'patient_text_value')
 
 
-def load_tcga_mutation(fpath, env=cfg['ENV']):
-    maf = pd.read_csv(fpath, sep='\t')
-    if 'Protein_Change' in maf.columns:
-        df = maf[
-            [
-                'Entrez_Gene_Id',
-                'Tumor_Sample_Barcode',
-                'Variant_Classification',
-                'Variant_Type',
-                'Protein_Change',
-            ]
+def load_tcga_mutation(fpath=TCGA_MUTATIONS, env=cfg['ENV']):
+    maf = pd.read_csv(fpath, sep='\t', nrows=5000)
+    #if 'Protein_Change' in maf.columns:
+    df = maf[
+        [
+            'Gene',
+            'Tumor_Sample_Barcode',
+            'Variant_Classification',
+            'Variant_Type',
+            'HGVSp_Short',
         ]
-    elif 'AAChange' in maf.columns:
-        df = maf[
-            [
-                'Entrez_Gene_Id',
-                'Tumor_Sample_Barcode',
-                'Variant_Classification',
-                'Variant_Type',
-                'AAChange',
-            ]
-        ]
-    elif 'amino_acid_change':
-        df = maf[
-            [
-                'Entrez_Gene_Id',
-                'Tumor_Sample_Barcode',
-                'Variant_Classification',
-                'Variant_Type',
-                'amino_acid_change',
-            ]
-        ]
-    else:
-        raise Exception(
-            'MAF file should have either "Protein_Change", "AAChange", '
-            'or "amino_acid_change" column'
-        )
-    df['sample_id'] = df['Tumor_Sample_Barcode'].map(lambda s: s[:15])
+    ]
+    # elif 'AAChange' in maf.columns:
+    #     df = maf[
+    #         [
+    #             'Entrez_Gene_Id',
+    #             'Tumor_Sample_Barcode',
+    #             'Variant_Classification',
+    #             'Variant_Type',
+    #             'AAChange',
+    #         ]
+    #     ]
+    # elif 'amino_acid_change' in maf.columns:
+    #     df = maf[
+    #         [
+    #             'Entrez_Gene_Id',
+    #             'Tumor_Sample_Barcode',
+    #             'Variant_Classification',
+    #             'Variant_Type',
+    #             'amino_acid_change',
+    #         ]
+    #     ]
+    # else:
+    #     raise Exception(
+    #         'MAF file should have either "Protein_Change", "AAChange", '
+    #         'or "amino_acid_change" column'
+    #     )
+    df.loc[:, 'sample_id'] = df['Tumor_Sample_Barcode'].map(lambda s: s[:15])
     df = df.drop('Tumor_Sample_Barcode', axis=1)
     df = df.rename(columns={
-        'Entrez_Gene_Id': 'gene_id',
+        'Gene': 'ensembl_id',
         'Variant_Type': 'variant type',
         'Variant_Classification': 'variant classification',
         'AAChange': 'AA change'})
-    df = df[df['gene_id'] > 0]
+    # df = df[df['gene_id'] > 0]
 
-    if env == 'dev':
-        df = df[df['gene_id'].isin(TEST_GENES)]
+    # if env == 'dev':
+    #     df = df[df['ensembl_id'].isin(cfg['TEST_ENSEMBL_GENES'])]
 
-    df = df.melt(id_vars=['sample_id', 'gene_id'],
+    df = df.melt(id_vars=['sample_id', 'ensembl_id'],
                  var_name='data_type', value_name='value')
-    df['unit'] = 'mutation'
-    df = df.drop_duplicates(subset=['gene_id', 'sample_id', 'data_type'])
+    df.loc[:, 'unit'] = 'mutation'
+    df = df.drop_duplicates(subset=['ensembl_id', 'sample_id', 'data_type'])
     df = df.dropna(subset=['value'])
 
-    df = df[['sample_id', 'gene_id', 'data_type', 'unit', 'value']]
-    db.copy_from_df(df, 'sample_gene_text_value')
+    df = df[['sample_id', 'ensembl_id', 'data_type', 'unit', 'value']]
+
+    conn = db.engine.connect()
+
+    try:
+        conn.execute('''
+            CREATE TABLE tmp_tcga_maf
+            (sample_id varchar, ensembl_id varchar, data_type varchar,
+             unit varchar, value varchar)
+        ''')
+
+        db.copy_from_df(df, 'tmp_tcga_maf')
+
+        conn.execute('''
+            INSERT INTO sample_gene_text_value
+            (sample_id, gene_id, data_type, unit, value)
+            SELECT tmp.sample_id, g.gene_id, tmp.data_type,
+                   tmp.unit, tmp.value
+            FROM tmp_tcga_maf tmp
+            INNER JOIN gene g ON g.ensembl_id = tmp.ensembl_id
+            INNER JOIN sample s ON s.sample_id = tmp.sample_id
+        ''')
+    finally:
+        conn.execute('DROP TABLE tmp_tcga_maf')
+        conn.close()

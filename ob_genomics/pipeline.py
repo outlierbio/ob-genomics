@@ -1,5 +1,5 @@
 import luigi
-from luigi import Task, Parameter, Target, LocalTarget
+from luigi import Task, WrapperTask, Parameter, Target, LocalTarget
 from luigi.contrib.s3 import S3Target
 import pandas as pd
 
@@ -131,17 +131,12 @@ class LoadTCIAPathways(Task):
 
 class LoadTCGAMutation(Task):
 
-    cohort = Parameter()
-
-    def requires(self):
-        return BuildGDACTable(data_type='mutation', cohort=self.cohort)
-
     def run(self):
-        tcga.load_tcga_mutation(self.input().path)
+        tcga.load_tcga_mutation()
         self.output().touch()
 
     def output(self):
-        update_id = f'TCGA {self.cohort} mutation'
+        update_id = f'TCGA mutation'
         return DatabaseTarget('sample_gene_value', update_id)
 
 
@@ -178,7 +173,7 @@ class LoadTCGAIsoforms(Task):
         return DatabaseTarget('sample_isoform_value', update_id)
 
 
-class LoadTCGA(Task):
+class LoadTCGA(WrapperTask):
     def requires(self):
         if cfg['ENV'] == 'dev':
             cohorts = ['ACC', 'CHOL', 'DLBC']
@@ -189,7 +184,7 @@ class LoadTCGA(Task):
             if cohort in ['LCML', 'FPPP', 'CNTL', 'MISC']:
                 continue
             yield LoadTCGAClinical(cohort=cohort)
-            yield LoadTCGAMutation(cohort=cohort)
+            yield LoadTCGAMutation()
             yield LoadTCGAProfile(data_type='copy number', cohort=cohort)
             yield LoadTCGAProfile(data_type='expression', cohort=cohort)
             yield LoadTCGAIsoforms(cohort=cohort)
