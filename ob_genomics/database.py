@@ -12,7 +12,8 @@ DATABASE_URI = cfg['DATABASE_URI']
 REFERENCE = cfg['REFERENCE']
 GENE = op.join(REFERENCE, 'ncbi', 'genes.hs.csv')
 GENE_HISTORY = op.join(REFERENCE, 'ncbi', 'gene_history.hs.tsv')
-TX_TO_GENE_FPATH = cfg['REFERENCE'] + '/tcga/rnaseqv2/unc_knownToLocus.txt'
+UNC_TX_TO_GENE_FPATH = cfg['REFERENCE'] + '/tcga/rnaseqv2/unc_knownToLocus.txt'
+GENCODE_TX_TO_GENE_FPATH = cfg['REFERENCE'] + '/gencode/gencode.v19.metadata.HGNC.txt'
 TISSUE = op.join(REFERENCE, 'tissue', 'tissue.csv')
 CELL_TYPE = op.join(REFERENCE, 'tissue', 'cell_type.csv')
 TEST_GENES = [3845, 7157, 4609, 2597]
@@ -30,8 +31,11 @@ def safe_commit(session):
         raise
 
 
-def init_db():
+def destroy():
     models.base.metadata.drop_all(bind=engine)
+
+
+def create():
     models.base.metadata.create_all(bind=engine)
 
 
@@ -89,17 +93,47 @@ def load_genes(gene_info_fpath=GENE, gene_history_fpath=GENE_HISTORY):
     copy_from_df(df, 'gene')
 
 
-def load_isoforms(fpath=TX_TO_GENE_FPATH):
-    df = pd.read_csv(TX_TO_GENE_FPATH, sep='\t', header=None)
+def load_isoforms(
+        unc_fpath=UNC_TX_TO_GENE_FPATH,
+        gencode_fpath=GENCODE_TX_TO_GENE_FPATH):
+
+    # UNC
+    df = pd.read_csv(unc_fpath, sep='\t', header=None)
     df.columns = ['mapping', 'isoform_id']
 
     df['symbol'] = df['mapping'].map(
         lambda s: s.split('|')[0] if '|' in s else None)
     df['gene_id'] = df['mapping'].map(
         lambda s: s.split('|')[1] if '|' in s else '\\N')
-    df['source'] = 'UCSC knownGene'
+    df.loc[:, 'source'] = 'UCSC knownGene'
 
     copy_from_df(df[['isoform_id', 'gene_id', 'source']], 'isoform')
+
+    # GENCODE
+    gencode = pd.read_csv(gencode_fpath, sep='\t', header=None)
+    gencode.columns = ['isoform_id', 'symbol']
+    gencode = gencode.drop_duplicates(subset='isoform_id')
+
+    conn = engine.connect()
+    conn.execute('''
+        CREATE TABLE tmp_gencode_isoform
+        (isoform_id varchar, symbol varchar)
+    ''')
+
+    try:
+        copy_from_df(gencode, 'tmp_gencode_isoform')
+
+        conn.execute('''
+            INSERT INTO isoform
+            (isoform_id, gene_id, source)
+            SELECT tmp.isoform_id, MIN(g.gene_id), 'GENCODE v19'
+            FROM tmp_gencode_isoform tmp
+            INNER JOIN gene g ON g.symbol = tmp.symbol
+            GROUP BY tmp.isoform_id
+        ''')
+    finally:
+        conn.execute('DROP TABLE tmp_gencode_isoform')
+        conn.close()
 
 
 def load_tissues(fpath=TISSUE):
