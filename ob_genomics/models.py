@@ -140,6 +140,18 @@ class TissueGeneValue(base):
     value = Column(Numeric, nullable=False)
 
 
+class TissueIsoformValue(base):
+    __tablename__ = 'tissue_isoform_value'
+    source_id = Column(String, ForeignKey('source.source_id'),
+                       primary_key=True)
+    tissue_id = Column(String, ForeignKey('tissue.tissue_id'),
+                       primary_key=True)
+    isoform_id = Column(Integer, ForeignKey('isoform.isoform_id'),
+                        primary_key=True)
+    unit = Column(String)
+    value = Column(Numeric, nullable=False)
+
+
 class CellTypeGeneTextValue(base):
     __tablename__ = 'cell_type_gene_text_value'
     source_id = Column(String, ForeignKey('source.source_id'),

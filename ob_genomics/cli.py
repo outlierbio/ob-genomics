@@ -16,12 +16,11 @@ def cli():
 @click.command()
 def init():
     print('Dropping all tables')
-    database.init_db()
+    database.destroy()
+
     print('Creating tables')
+    database.create()
 
-
-@click.command()
-def meta():
     print('Loading genes')
     database.load_genes()
 
@@ -51,4 +50,3 @@ def test():
 cli.add_command(init)
 cli.add_command(build)
 cli.add_command(test)
-cli.add_command(meta)
