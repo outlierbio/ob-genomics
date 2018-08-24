@@ -2,6 +2,7 @@
 install.packages(c(
   'devtools',
   'magrittr',
+  'rsconnect',
   'tidyverse'
 ), repos='http://cran.r-project.org')
 

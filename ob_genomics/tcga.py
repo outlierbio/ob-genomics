@@ -368,7 +368,7 @@ def load_tcga_clinical(fpath):
 
 
 def load_tcga_mutation(fpath=TCGA_MUTATIONS, env=cfg['ENV']):
-    maf = pd.read_csv(fpath, sep='\t', nrows=5000)
+    maf = pd.read_csv(fpath, sep='\t')
     #if 'Protein_Change' in maf.columns:
     df = maf[
         [
