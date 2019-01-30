@@ -146,7 +146,7 @@ class TissueIsoformValue(base):
                        primary_key=True)
     tissue_id = Column(String, ForeignKey('tissue.tissue_id'),
                        primary_key=True)
-    isoform_id = Column(Integer, ForeignKey('isoform.isoform_id'),
+    isoform_id = Column(String, ForeignKey('isoform.isoform_id'),
                         primary_key=True)
     unit = Column(String)
     value = Column(Numeric, nullable=False)
