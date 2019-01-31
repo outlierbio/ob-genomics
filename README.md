@@ -19,9 +19,8 @@ Adjust paths to your temp folder, reference data folder, and database.
 Usage
 -----
 ## Create and populate the database
-	$ ob-genomics init  # DELETES and creates a new database
-	$ ob-genomics meta  # Loads gene, tissue, and sample metadata
-	$ ob-genomics build  # Luigi pipeline for loading genomics data
+	$ ob-genomics init  # DELETES and creates a new database, then loads gene, tissue, and sample metadata
+	$ ob-genomics build  # Luigi pipeline for loading large genomics datasets into database
 
 ## Start up the Shiny app
 Start up the Shiny app from the Dockerfile.shiny image, mounting this directory and binding port 80.
